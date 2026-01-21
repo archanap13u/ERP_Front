@@ -28,7 +28,7 @@ export default function StudentRecordsPage() {
                 const orgId = localStorage.getItem('organization_id');
                 const deptId = localStorage.getItem('department_id');
 
-                let url = 'http://localhost:5000/api/resource/student';
+                let url = '/api/resource/student';
 
                 // Construct robust query params based on role
                 const params = new URLSearchParams();
@@ -60,7 +60,7 @@ export default function StudentRecordsPage() {
                 setStudents(data);
 
                 // Fetch Study Centers (for filters)
-                const resCenters = await fetch(`http://localhost:5000/api/resource/studycenter?organizationId=${orgId || ''}`);
+                const resCenters = await fetch(`/api/resource/studycenter?organizationId=${orgId || ''}`);
                 const jsonCenters = await resCenters.json();
                 setStudyCenters(jsonCenters.data || []);
 

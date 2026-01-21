@@ -10,7 +10,11 @@ export default defineConfig({
     server: {
         port: 3000,
         proxy: {
-            '/api': 'http://localhost:5000'
+            '/api': {
+                target: 'https://erp-back-kbcr.onrender.com',
+                changeOrigin: true,
+                secure: false,
+            }
         }
     }
 });
