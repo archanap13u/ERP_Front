@@ -221,7 +221,7 @@ function App() {
                         <Route path="/assetmaintenance" element={<MaintenancePage />} />
                         <Route path="/depreciation" element={<DepreciationPage />} />
 
-                        <Route path="/complaint" element={<GenericList />} /> {/* Use GenericList for HR view for now, maybe custom later */}
+                        <Route path="/complaint" element={<GenericList doctype="complaint" />} /> {/* Use GenericList for HR view for now, maybe custom later */}
 
                         <Route path="/:doctype" element={<GenericList />} />
                         <Route path="/:doctype/new" element={<GenericNew />} />

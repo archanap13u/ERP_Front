@@ -3,8 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Plus, Search, Filter, MoreHorizontal, ArrowLeft, Trash2 } from 'lucide-react';
 import { fieldRegistry } from '../config/fields';
 
-export default function GenericList() {
-    const { doctype } = useParams();
+interface GenericListProps {
+    doctype?: string;
+}
+
+export default function GenericList({ doctype: propDoctype }: GenericListProps) {
+    const params = useParams();
+    const doctype = propDoctype || params.doctype;
     const navigate = useNavigate();
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -198,6 +203,7 @@ export default function GenericList() {
                                 {doctype === 'jobopening' && <th className="px-4 py-2">Remaining</th>}
                                 {(doctype === 'announcement' || doctype === 'opsannouncement') && <th className="px-4 py-2">Target Center</th>}
                                 {doctype === 'announcement' && <th className="px-4 py-2">Department</th>}
+                                {doctype === 'complaint' && <th className="px-4 py-2">Filed By</th>}
                                 <th className="px-4 py-2">Status</th>
                                 <th className="px-4 py-2">Last Modified</th>
                                 <th className="px-4 py-2 w-10"></th>
@@ -277,6 +283,11 @@ export default function GenericList() {
                                             {doctype === 'announcement' && (
                                                 <td className="px-4 py-3 text-[#1d2129]">
                                                     {item.department || '-'}
+                                                </td>
+                                            )}
+                                            {doctype === 'complaint' && (
+                                                <td className="px-4 py-3 text-[#1d2129]">
+                                                    {item.employeeName || item.employeeId || 'Anonymous'}
                                                 </td>
                                             )}
                                             <td className="px-4 py-3">
