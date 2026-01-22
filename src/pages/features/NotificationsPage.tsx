@@ -156,6 +156,7 @@ export default function NotificationsPage() {
                 ]}
                 masterCards={[]}
                 shortcuts={[]}
+                hideActions={true}
             />
 
             <div className="max-w-4xl mx-auto space-y-4">

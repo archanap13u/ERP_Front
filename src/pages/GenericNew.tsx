@@ -243,15 +243,26 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                 <div className="flex items-center gap-4">
 
 
-                    <button onClick={() => navigate(`/${doctype}`)} className="p-1 hover:bg-gray-200 rounded transition-colors">
+                    <button
+                        onClick={() => {
+                            const redirect = new URLSearchParams(location.search).get('redirect');
+                            if (redirect) navigate(redirect);
+                            else navigate(`/${doctype}`);
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    >
                         <ChevronLeft size={20} className="text-gray-500" />
                     </button>
                     <div>
                         <div className="flex items-center gap-1 text-[11px] text-[#8d99a6] uppercase font-bold tracking-wider">
                             <span>New</span>
-                            <Link to={`/${doctype}`} className="hover:text-blue-600 hover:underline">
+                            <span className="hover:text-blue-600 hover:underline cursor-pointer" onClick={() => {
+                                const redirect = new URLSearchParams(location.search).get('redirect');
+                                if (redirect) navigate(redirect);
+                                else navigate(`/${doctype}`);
+                            }}>
                                 {displayTitle}
-                            </Link>
+                            </span>
                         </div>
                         <h2 className="text-[20px] font-bold flex items-center gap-2">
                             Untitled
@@ -264,7 +275,14 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => navigate(`/${doctype}`)} className="bg-white border border-[#d1d8dd] px-4 py-1.5 rounded text-[13px] font-semibold hover:bg-gray-50">
+                    <button
+                        onClick={() => {
+                            const redirect = new URLSearchParams(location.search).get('redirect');
+                            if (redirect) navigate(redirect);
+                            else navigate(`/${doctype}`);
+                        }}
+                        className="bg-white border border-[#d1d8dd] px-4 py-1.5 rounded text-[13px] font-semibold hover:bg-gray-50"
+                    >
                         Cancel
                     </button>
                     <button

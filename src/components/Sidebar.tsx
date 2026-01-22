@@ -96,11 +96,12 @@ export default function Sidebar() {
         // Core Dashboard Items (Role based, generally always visible for the role)
         {
             icon: LayoutDashboard,
-            label: 'Dashboard',
-            href: (role === 'Operations' || panelType === 'Operations' || panelType === 'Education') ? '/ops-dashboard' :
-                (role === 'HR' || panelType === 'HR') ? '/hr' :
-                    (role === 'Finance' || panelType === 'Finance') ? '/finance' :
-                        '/employee-dashboard',
+            label: role === 'Employee' ? 'Staff Portal' : 'Dashboard',
+            href: role === 'Employee' ? '/employee-dashboard' :
+                (role === 'Operations' || panelType === 'Operations' || panelType === 'Education') ? '/ops-dashboard' :
+                    (role === 'HR' || panelType === 'HR') ? '/hr' :
+                        (role === 'Finance' || panelType === 'Finance') ? '/finance' :
+                            '/employee-dashboard',
             roles: ['Employee', 'DepartmentAdmin', 'HR', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets']
         },
         { icon: UserCheck, label: 'Staff Portal', href: '/employee-dashboard', roles: ['HR', 'Operations', 'Finance', 'DepartmentAdmin'] },
@@ -124,7 +125,7 @@ export default function Sidebar() {
         { icon: UserCheck, label: 'Recruitment', href: '/jobopening', roles: ['HR'], feature: 'Recruitment' },
         { icon: Users, label: 'Employee Lifecycle', href: '/employee-lifecycle', roles: ['HR'], feature: 'Employee Lifecycle' },
 
-        { icon: GraduationCap, label: 'STUDENTS', href: (role === 'Finance' || panelType === 'Finance' || role?.includes('Admin')) ? '/finance-students' : '/student', roles: ['HR', 'Operations', 'StudyCenter', 'Finance', 'OrganizationAdmin', 'SuperAdmin'], feature: 'STUDENTS' },
+        { icon: GraduationCap, label: 'STUDENTS', href: (role === 'Finance' || panelType === 'Finance' || role?.includes('Admin')) ? '/finance-students' : '/student', roles: ['HR', 'Operations', 'StudyCenter', 'Finance', 'SuperAdmin'], feature: 'STUDENTS' },
         { icon: Megaphone, label: 'Complaints', href: '/complaint', roles: ['HR'], feature: 'Employee Complaints' },
         { icon: School, label: 'Holidays', href: '/holiday', roles: ['HR', 'Operations'], feature: 'Holidays' },
         { icon: Megaphone, label: 'Announcements', href: '/announcement', roles: ['HR'], feature: 'Announcements' },
@@ -177,13 +178,66 @@ export default function Sidebar() {
         { icon: Bell, label: 'Notifications', href: '/notifications', roles: ['Employee', 'DepartmentAdmin', 'HR', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets', 'StudyCenter', 'OrganizationAdmin'] },
     ];
 
+    // Total hard sandbox for employees
+    if (role === 'Employee') {
+        const staffPortal = allMenuItems.find(i => i.label === 'Staff Portal');
+        const notifications = allMenuItems.find(i => i.label === 'Notifications');
+        const items = [];
+        if (staffPortal) items.push(staffPortal);
+        if (notifications) items.push(notifications);
+
+        return (
+            <div className="w-60 h-screen bg-[#f4f5f6] border-r border-[#d1d8dd] flex flex-col fixed left-0 top-0 z-50 overflow-y-auto">
+                <div className="p-4 pt-16 flex-1">
+                    <div className="text-[11px] font-bold text-[#8d99a6] uppercase tracking-wider mb-4 px-3 flex items-center justify-between">
+                        <span>Staff View</span>
+                    </div>
+                    <nav className="space-y-1">
+                        {items.map((item, index) => {
+                            const isActive = location.pathname === item.href;
+                            return (
+                                <Link
+                                    key={index}
+                                    to={item.href}
+                                    className={`flex items-center gap-3 px-3 py-2 rounded text-[#1d2129] hover:bg-[#ebedef] transition-colors no-underline ${isActive ? 'bg-white shadow-sm font-bold border-l-2 border-blue-600 pl-[10px]' : 'bg-transparent'}`}
+                                >
+                                    <item.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+                                    <span className="text-[13px]">{item.label}</span>
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+
+                <div className="p-4 border-t border-[#d1d8dd]">
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 px-3 py-2 rounded text-red-600 hover:bg-red-50 transition-colors w-full"
+                    >
+                        <LogOut size={16} />
+                        <span className="text-[13px]">Logout</span>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const filteredItems = allMenuItems.filter(item => {
         // 1. Basic Role Check (if roles are specified)
         const roleAllowed = !item.roles || item.roles.length === 0 || (role && item.roles.includes(role));
+
+        // --- STRICT STAFF ISOLATION ---
+        // If the user is a standard Employee, they MUST ONLY see their Portal and Notifications.
+        if (role === 'Employee') {
+            const staffWhitelist = ['Staff Portal', 'Notifications'];
+            return staffWhitelist.includes(item.label) && roleAllowed;
+        }
+
         if (!roleAllowed && role !== 'DepartmentAdmin') return false;
 
         // 2. Strict Feature Check for Department Admin/Customized Panels
-        if (role === 'DepartmentAdmin' || (deptFeatures && deptFeatures.length > 0)) {
+        // EXCEPTION: Standard Employees should NOT inherit their department's admin features
+        if ((role === 'DepartmentAdmin' || (deptFeatures && deptFeatures.length > 0)) && role !== 'Employee') {
             // Always show basic navigation items (Dashboard, Notifications)
             if (!item.feature) return roleAllowed;
 
@@ -197,7 +251,7 @@ export default function Sidebar() {
     // Remove duplicates based on label (case-insensitive)
     const uniqueFilteredItems = filteredItems.filter((item, index, self) =>
         index === self.findIndex((t) => (
-            t.label.toLowerCase() === item.label.toLowerCase()
+            t.label?.toLowerCase() === item.label?.toLowerCase()
         ))
     );
 
@@ -224,7 +278,7 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Contextual Sub-Panels (Isolated to HR, Ops, and Department Workspaces) */}
-                {departments.length > 0 && (location.pathname.startsWith('/hr') || location.pathname.startsWith('/ops-dashboard') || location.pathname.includes('/department')) && (
+                {departments.length > 0 && role !== 'Employee' && (location.pathname.startsWith('/hr') || location.pathname.startsWith('/ops-dashboard') || location.pathname.includes('/department')) && (
                     <div className="mt-8 animate-in slide-in-from-left duration-500">
                         <div className="text-[11px] font-bold text-[#8d99a6] uppercase tracking-wider mb-4 px-3 flex items-center justify-between">
                             <span>Sub-Panels</span>

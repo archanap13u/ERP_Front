@@ -31,6 +31,12 @@ export default function LoginPage() {
         setError('');
         setLoading(true);
 
+        // Clear any stale administrative state before attempting new login
+        localStorage.removeItem('department_panel_type');
+        localStorage.removeItem('user_features');
+        localStorage.removeItem('department_name');
+        localStorage.removeItem('department_id');
+
         try {
             // First, try super admin authentication
             const superAdminRes = await fetch('/api/auth/superadmin/login', {
@@ -67,6 +73,8 @@ export default function LoginPage() {
                 if (data.user.organizationId) localStorage.setItem('organization_id', data.user.organizationId);
                 if (data.user.departmentId) localStorage.setItem('department_id', data.user.departmentId);
                 if (data.user.panelType) localStorage.setItem('department_panel_type', data.user.panelType);
+                else localStorage.removeItem('department_panel_type'); // Clear if not provided (e.g. Employee)
+
                 if (data.user.role === 'StudyCenter') {
                     localStorage.setItem('study_center_id', data.user.id || data.user._id);
                 }
@@ -91,21 +99,35 @@ export default function LoginPage() {
                     }
                 }
 
-                if (data.user.role === 'HR') {
-                    navigate('/hr');
-                } else if (data.user.role === 'OrganizationAdmin') {
+                // --- SPECIAL HANDLING: EMPLOYEE ---
+                if (data.user.role === 'Employee') {
+                    console.log('[Login] 👩‍💼 Detected Employee role. Navigating to /employee-dashboard');
+                    navigate('/employee-dashboard', { replace: true });
+                }
+                else if (data.user.role === 'HR') {
+                    console.log('[Login] 🤝 Detected HR role. Navigating to /hr');
+                    navigate('/hr', { replace: true });
+                }
+                else if (data.user.role === 'Operations') {
+                    console.log('[Login] ⚙️ Detected Operations role. Navigating to /ops-dashboard');
+                    navigate('/ops-dashboard', { replace: true });
+                }
+                else if (data.user.role === 'Finance') {
+                    console.log('[Login] 💰 Detected Finance role. Navigating to /finance');
+                    navigate('/finance', { replace: true });
+                }
+                else if (data.user.role === 'OrganizationAdmin') {
+                    console.log('[Login] 🏫 Detected OrganizationAdmin. Navigating to /organization-dashboard');
                     navigate('/organization-dashboard');
-                } else if (data.user.role === 'Employee') {
-                    navigate('/employee-dashboard');
                 } else if (data.user.role === 'Student') {
+                    console.log('[Login] 🎓 Detected Student. Navigating to /student-dashboard');
                     navigate('/student-dashboard');
-                } else if (data.user.role === 'Operations') {
-                    navigate('/ops-dashboard');
-                } else if (data.user.role === 'Finance') {
-                    navigate('/finance');
                 } else if (data.user.role === 'StudyCenter') {
+                    console.log('[Login] 🏢 Detected StudyCenter. Navigating to /center-dashboard');
                     navigate('/center-dashboard');
                 } else if (data.user.role === 'DepartmentAdmin') {
+                    console.log('[Login] 🏗️ Detected DepartmentAdmin role.');
+                    // ... rest of the logic ...
                     // Fetch department details to check panelType (already fetched above, but we need the panelType specifically)
                     try {
                         const deptRes = await fetch(`/api/resource/department/${data.user.departmentId}?organizationId=${data.user.organizationId}`);
@@ -159,7 +181,7 @@ export default function LoginPage() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2.5 bg-[#f0f4f7] border border-[#d1d8dd] rounded-lg text-[14px] focus:bg-white focus:border-blue-400 outline-none transition-all"
-                                    placeholder="Enter your username"
+                                    placeholder="Employee ID or Email"
                                     required
                                 />
                             </div>

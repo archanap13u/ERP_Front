@@ -13,6 +13,8 @@ export default function Navbar() {
         }
     }, []);
 
+    const role = localStorage.getItem('user_role');
+
     return (
         <header className="h-11 fixed top-0 right-0 left-0 bg-white border-b border-[#d1d8dd] z-[60] flex items-center justify-between px-4">
             <div className="flex items-center gap-6">
@@ -25,20 +27,24 @@ export default function Navbar() {
             </div>
 
             <div className="flex-1 max-w-2xl px-8">
-                <div className="flex items-center gap-2 bg-[#f0f4f7] px-3 py-1.5 rounded border border-[#d1d8dd] group focus-within:bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-                    <Search size={14} className="text-[#8d99a6]" />
-                    <input
-                        type="text"
-                        placeholder="Search or type a command"
-                        className="bg-transparent border-none outline-none text-[13px] w-full text-[#1d2129] placeholder:text-[#8d99a6]"
-                    />
-                </div>
+                {role !== 'Employee' && role !== 'Student' && (
+                    <div className="flex items-center gap-2 bg-[#f0f4f7] px-3 py-1.5 rounded border border-[#d1d8dd] group focus-within:bg-white focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                        <Search size={14} className="text-[#8d99a6]" />
+                        <input
+                            type="text"
+                            placeholder="Search or type a command"
+                            className="bg-transparent border-none outline-none text-[13px] w-full text-[#1d2129] placeholder:text-[#8d99a6]"
+                        />
+                    </div>
+                )}
             </div>
 
             <div className="flex items-center gap-2">
-                <button className="p-1.5 hover:bg-[#f0f4f7] rounded transition-colors text-[#626161]">
-                    <Plus size={18} />
-                </button>
+                {role !== 'Employee' && role !== 'Student' && (
+                    <button className="p-1.5 hover:bg-[#f0f4f7] rounded transition-colors text-[#626161]">
+                        <Plus size={18} />
+                    </button>
+                )}
                 <button className="p-1.5 hover:bg-[#f0f4f7] rounded transition-colors text-[#626161]">
                     <HelpCircle size={18} />
                 </button>
