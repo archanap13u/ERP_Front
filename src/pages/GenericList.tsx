@@ -45,77 +45,76 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
     };
 
     useEffect(() => {
-        if (!doctype) return;
-        setLoading(true);
         const orgId = localStorage.getItem('organization_id');
-        const userRole = localStorage.getItem('user_role');
-        const deptIdFromStorage = localStorage.getItem('department_id');
-        const deptNameFromStorage = localStorage.getItem('department_name');
+        if (!doctype || !orgId) return;
 
-        let deptId = deptIdFromStorage;
-        let deptName = deptNameFromStorage;
+        async function fetchData() {
+            setLoading(true);
+            try {
+                const userRole = localStorage.getItem('user_role');
+                const deptIdFromStorage = localStorage.getItem('department_id');
+                const deptNameFromStorage = localStorage.getItem('department_name');
 
-        // Fallback for Admins without query params (detect context from path)
-        if (!deptName && (userRole === 'OrganizationAdmin' || userRole === 'SuperAdmin')) {
-            const path = location.pathname;
-            // Only apply automatic department silos for actual departmental news/meta
-            // Note: complaint is NOT departmental - it's org-wide for HR to manage all
-            const isDepartmental = ['announcement', 'holiday', 'performancereview'].includes(doctype || '');
+                let deptId = deptIdFromStorage;
+                let deptName = deptNameFromStorage;
 
-            if (isDepartmental) {
-                if (/^\/(hr|employee|jobopening|attendance|holiday)/i.test(path)) {
-                    deptName = 'Human Resources';
-                } else if (/^\/(ops-dashboard|student|university|program|studycenter)/i.test(path)) {
-                    deptName = 'Operations';
-                } else if (/^\/(finance|salesinvoice|payment|expense)/i.test(path)) {
-                    deptName = 'Finance';
-                }
-            }
-        }
+                // Fallback for Admins without query params (detect context from path)
+                if (!deptName && (userRole === 'OrganizationAdmin' || userRole === 'SuperAdmin')) {
+                    const path = location.pathname;
+                    const isDepartmental = ['announcement', 'holiday', 'performancereview'].includes(doctype || '');
 
-        let url = `/api/resource/${doctype}?organizationId=${orgId || ''}`;
-
-        // Don't silo Employees, Students, or Complaints by Department for HR/Admin roles
-        // Complaints are org-wide so HR can see all employee complaints
-        const isGlobalDoctype = ['employee', 'student', 'jobopening', 'complaint'].includes(doctype || '');
-        const isAdminOrHR = userRole === 'SuperAdmin' || userRole === 'OrganizationAdmin' || userRole === 'HR' || userRole === 'Operations';
-
-        if (!isGlobalDoctype || !isAdminOrHR) {
-            if (deptId) url += `&departmentId=${deptId}`;
-            if (deptName) url += `&department=${encodeURIComponent(deptName)}`;
-        }
-
-        fetch(url)
-            .then(res => res.json())
-            .then(async json => {
-                setData(json.data || []);
-                setLoading(false);
-
-                // For jobopening, fetch employees to calculate hired count per vacancy
-                if (doctype === 'jobopening' && json.data?.length > 0) {
-                    try {
-                        const empRes = await fetch(`/api/resource/employee?organizationId=${orgId}`);
-                        const empJson = await empRes.json();
-                        const employees = empJson.data || [];
-
-                        // Count employees per jobOpening
-                        const counts: Record<string, number> = {};
-                        for (const emp of employees) {
-                            const jobId = emp.jobOpening?._id || emp.jobOpening;
-                            if (jobId) {
-                                counts[jobId] = (counts[jobId] || 0) + 1;
-                            }
+                    if (isDepartmental) {
+                        if (/^\/(hr|employee|jobopening|attendance|holiday)/i.test(path)) {
+                            deptName = 'Human Resources';
+                        } else if (/^\/(ops-dashboard|student|university|program|studycenter)/i.test(path)) {
+                            deptName = 'Operations';
+                        } else if (/^\/(finance|salesinvoice|payment|expense)/i.test(path)) {
+                            deptName = 'Finance';
                         }
-                        setHiredCounts(counts);
-                    } catch (err) {
-                        console.error('Failed to fetch employee counts:', err);
                     }
                 }
-            })
-            .catch(err => {
+
+                let url = `/api/resource/${doctype}?organizationId=${orgId || ''}`;
+
+                // Don't silo Employees, Students, or Complaints by Department for HR/Admin roles
+                const isGlobalDoctype = ['employee', 'student', 'jobopening', 'complaint'].includes(doctype || '');
+                const isAdminOrHR = userRole === 'SuperAdmin' || userRole === 'OrganizationAdmin' || userRole === 'HR' || userRole === 'Operations';
+
+                if (!isGlobalDoctype || !isAdminOrHR) {
+                    if (deptId) url += `&departmentId=${deptId}`;
+                    if (deptName) url += `&department=${encodeURIComponent(deptName)}`;
+                }
+
+                const dataPromise = fetch(url).then(res => res.json());
+
+                // Metadata fetch for job openings
+                let metaPromise = Promise.resolve({ data: [] });
+                if (doctype === 'jobopening') {
+                    metaPromise = fetch(`/api/resource/employee?organizationId=${orgId}`).then(res => res.json());
+                }
+
+                const [json, metaJson] = await Promise.all([dataPromise, metaPromise]);
+
+                setData(json.data || []);
+
+                if (doctype === 'jobopening') {
+                    const employees = metaJson.data || [];
+                    const counts: Record<string, number> = {};
+                    for (const emp of employees) {
+                        const jobId = (emp as any).jobOpening?._id || (emp as any).jobOpening;
+                        if (jobId) {
+                            counts[jobId] = (counts[jobId] || 0) + 1;
+                        }
+                    }
+                    setHiredCounts(counts);
+                }
+            } catch (err) {
                 console.error('Fetch error:', err);
+            } finally {
                 setLoading(false);
-            });
+            }
+        }
+        fetchData();
     }, [doctype]);
 
     const handleRowClick = (id: string) => {

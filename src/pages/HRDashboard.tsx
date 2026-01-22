@@ -18,6 +18,7 @@ export default function HRDashboard() {
     const [isCustomizing, setIsCustomizing] = useState(false);
     const [features, setFeatures] = useState<string[]>([]);
     const [employeeSearch, setEmployeeSearch] = useState('');
+    const [contextData, setContextData] = useState<{ id?: string, name?: string }>({});
 
     const deptId = localStorage.getItem('department_id');
     const orgId = localStorage.getItem('organization_id');
@@ -33,62 +34,50 @@ export default function HRDashboard() {
         }
 
         async function fetchData() {
+            if (!orgId) return;
             try {
-                const orgId = localStorage.getItem('organization_id');
-                const deptId = localStorage.getItem('department_id');
-                const userRole = localStorage.getItem('user_role');
-
-                // Step 1: Fetch Departments for context resolution (especially for Admin)
+                // Step 1: Fetch Departments (required for context resolution)
                 const resDept = await fetch(`/api/resource/department?organizationId=${orgId}`);
                 const jsonDept = await resDept.json();
                 const fetchedDepts = jsonDept.data || [];
                 setDepartments(fetchedDepts);
 
-                // Fetch Department Features (Live Sync)
-                if (deptId) {
-                    fetch(`/api/resource/department/${deptId}?organizationId=${orgId}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.data && data.data.features) {
-                                setFeatures(data.data.features);
-                                localStorage.setItem('user_features', JSON.stringify(data.data.features));
-                            }
-                        })
-                        .catch(err => console.error("Failed to sync features:", err));
-                }
-
-                let baseUrl = `/api/resource`;
-                let globalParams = `?organizationId=${orgId || ''}`;
-                let deptParams = globalParams;
-
-                // Enforce strict isolation: If deptId exists, use it.
-                // If not (Admin), try to find the HR department dynamically
+                // Step 2: Determine context
                 let contextDept = fetchedDepts.find((d: any) => d.panelType === 'HR');
                 let effectiveDeptId = deptId || contextDept?._id;
                 let effectiveDeptName = localStorage.getItem('department_name') || contextDept?.name;
 
+                setContextData({ id: effectiveDeptId, name: effectiveDeptName });
+
+                let baseUrl = `/api/resource`;
+                let globalParams = `?organizationId=${orgId}`;
+                let deptParams = globalParams;
+
+                if (effectiveDeptId) deptParams += `&departmentId=${effectiveDeptId}`;
+                if (effectiveDeptName) deptParams += `&department=${encodeURIComponent(effectiveDeptName)}`;
+
+                // Step 3: Fetch all dashboard data in parallel
+                const fetchPromises = [
+                    fetch(`${baseUrl}/employee${globalParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/attendance${deptParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/holiday${deptParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/announcement${deptParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/complaint${globalParams}`).then(r => r.json())
+                ];
+
+                // Also fetch features live if we have a dept context
                 if (effectiveDeptId) {
-                    deptParams += `&departmentId=${effectiveDeptId}`;
-                }
-                if (effectiveDeptName) {
-                    deptParams += `&department=${encodeURIComponent(effectiveDeptName)}`;
+                    fetchPromises.push(fetch(`${baseUrl}/department/${effectiveDeptId}?organizationId=${orgId}`).then(r => r.json()));
                 }
 
-                const [resEmp, resAtt, resHol, resAnn, resComp] = await Promise.all([
-                    fetch(`${baseUrl}/employee${globalParams}`),
-                    fetch(`${baseUrl}/attendance${deptParams}`),
-                    fetch(`${baseUrl}/holiday${deptParams}`),
-                    fetch(`${baseUrl}/announcement${deptParams}`),
-                    fetch(`${baseUrl}/complaint${globalParams}`) // HR sees all complaints in the org (no dept filter)
-                ]);
+                const results = await Promise.all(fetchPromises);
 
-                const [jsonEmp, jsonAtt, jsonHol, jsonAnn, jsonComp] = await Promise.all([
-                    resEmp.json(),
-                    resAtt.json(),
-                    resHol.json(),
-                    resAnn.json(),
-                    resComp.json()
-                ]);
+                const jsonEmp = results[0];
+                const jsonAtt = results[1];
+                const jsonHol = results[2];
+                const jsonAnn = results[3];
+                const jsonComp = results[4];
+                const jsonFeat = results[5];
 
                 setEmployees(jsonEmp.data || []);
                 setCounts({
@@ -100,33 +89,25 @@ export default function HRDashboard() {
                 });
 
                 setHolidays(jsonHol.data?.slice(0, 3) || []);
-                console.log('[HR Dashboard] Complaints fetched:', jsonComp);
                 setComplaints(jsonComp.data?.slice(0, 5) || []);
 
                 const allAnnouncements = jsonAnn.data || [];
                 setAnnouncements(allAnnouncements.filter((a: any) => a.type !== 'Poll').slice(0, 3));
                 setPolls(allAnnouncements.filter((a: any) => a.type === 'Poll').slice(0, 2));
 
-                // We also need to update the creation links to use this context
-                setContextData({ id: effectiveDeptId, name: effectiveDeptName });
+                if (jsonFeat?.data?.features) {
+                    setFeatures(jsonFeat.data.features);
+                    localStorage.setItem('user_features', JSON.stringify(jsonFeat.data.features));
+                }
+
             } catch (e) {
-                console.error(e);
+                console.error("[HR Dashboard] Fetch failed:", e);
             } finally {
                 setLoading(false);
             }
         }
         fetchData();
-    }, [orgId, deptId]); // Re-run when org or dept context changes
-
-    const [contextData, setContextData] = useState<{ id?: string, name?: string }>({});
-
-    useEffect(() => {
-        if (!orgId) return;
-        fetch(`/api/resource/department?organizationId=${orgId}`)
-            .then(res => res.json())
-            .then(json => setDepartments(json.data || []))
-            .catch(err => console.error(err));
-    }, [orgId]);
+    }, [orgId, deptId]);
 
     const handleSaveFeatures = async (newFeatures: string[]) => {
         try {
