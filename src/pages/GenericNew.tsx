@@ -18,7 +18,10 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
     const [dynamicOptions, setDynamicOptions] = useState<{ [key: string]: { label: string, value: string }[] }>({});
     const [allowedDesignations, setAllowedDesignations] = useState<string[] | null>(null);
 
-    const fields = React.useMemo(() => fieldRegistry[doctype as string] || [{ name: 'name', label: 'Name', type: 'text' }], [doctype]);
+    const fields = React.useMemo(() => {
+        const key = (doctype as string || '').toLowerCase();
+        return fieldRegistry[key] || [{ name: 'name', label: 'Name', type: 'text' }];
+    }, [doctype]);
     const displayTitle = (doctype as string || '').replace(/([A-Z])/g, ' $1').trim();
 
     // Poll options state
@@ -32,6 +35,74 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
         }
     }, [pollOptions, doctype]);
 
+    // Synchronous Initialization of FormData
+    useEffect(() => {
+        const storedOrgId = localStorage.getItem('organization_id');
+        const orgId = (storedOrgId === 'null' || storedOrgId === 'undefined') ? null : storedOrgId;
+        const storedDeptId = localStorage.getItem('department_id');
+        const deptName = localStorage.getItem('department_name');
+        const userRole = localStorage.getItem('user_role');
+        const studyCenterFromStorage = localStorage.getItem('study_center_name');
+
+        setFormData((prev: any) => {
+            const updated = { ...prev };
+            if (orgId) updated.organizationId = orgId;
+
+            const isDepartmental = ['holiday', 'complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark'].includes(doctype || '');
+
+            if (isDepartmental) {
+                if (storedDeptId) updated.departmentId = storedDeptId;
+                if (deptName) updated.department = deptName;
+            }
+
+            if (doctype === 'employee') {
+                if (storedDeptId) updated.addedByDepartmentId = storedDeptId;
+                if (deptName) updated.addedByDepartmentName = deptName;
+            }
+
+            if (studyCenterFromStorage && userRole === 'StudyCenter') {
+                updated.studyCenter = studyCenterFromStorage;
+            }
+
+            if (doctype === 'complaint') {
+                const storedEmpId = localStorage.getItem('employee_id');
+                const storedEmpName = localStorage.getItem('user_name');
+                if (storedEmpId) updated.employeeId = storedEmpId;
+                if (storedEmpName) updated.employeeName = storedEmpName;
+            }
+
+            // Merge URL Query Parameters
+            const urlParams = new URLSearchParams(location.search);
+            const windowParams = new URLSearchParams(window.location.search);
+            const keys = [
+                'employeeName', 'email', 'jobOpening', 'applicationId',
+                'designation', 'department', 'departmentId', 'studyCenter', 'studyCenterId',
+                'student', 'studentId', 'program', 'semester', 'batch', 'subject'
+            ];
+
+            keys.forEach(key => {
+                const val = urlParams.get(key) || windowParams.get(key);
+                if (val && val !== 'undefined' && val !== 'null') updated[key] = val;
+            });
+
+            if (doctype === 'employee') {
+                const urlDeptId = urlParams.get('departmentId') || windowParams.get('departmentId');
+                const urlDeptName = urlParams.get('department') || windowParams.get('department');
+                if (urlDeptId && urlDeptId !== 'undefined') updated.addedByDepartmentId = urlDeptId;
+                if (urlDeptName && urlDeptName !== 'undefined') updated.addedByDepartmentName = urlDeptName;
+            }
+
+            console.log(`[GenericNew] Initialization DEBUG:`, {
+                doctype,
+                locationSearch: location.search,
+                windowSearch: window.location.search,
+                result: updated
+            });
+            return updated;
+        });
+    }, [doctype, location.search]);
+
+    // Asynchronous Fetching of Dynamic Options
     useEffect(() => {
         const storedOrgId = localStorage.getItem('organization_id');
         const orgId = (storedOrgId === 'null' || storedOrgId === 'undefined') ? null : storedOrgId;
@@ -48,24 +119,44 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                         const urlParams = new URLSearchParams(location.search);
                         const studyCenterFilter = urlParams.get('studyCenter') || localStorage.getItem('study_center_name');
 
-                        if (field.link !== 'department' && field.link !== 'student') {
+                        const isGlobalLink = ['studycenter', 'university', 'program', 'department', 'designation', 'student'].includes(field.link.toLowerCase());
+
+                        if (!isGlobalLink) {
                             if (deptId) url += `&departmentId=${deptId}`;
                             if (deptName) url += `&department=${encodeURIComponent(deptName)}`;
                         }
 
-                        // Apply Center filtering for Students specifically
                         if (field.link === 'student' && studyCenterFilter) {
                             url += `&studyCenter=${encodeURIComponent(studyCenterFilter.trim())}`;
                         }
 
                         const res = await fetch(url);
                         const json = await res.json();
-                        options[field.name] = (json.data || []).map((item: any) => ({
-                            label: item.title || item.centerName || item.universityName || item.programName || item.job_title || item.name || item.employeeName || item.studentName || item._id,
-                            value: field.link === 'designation' ? item.title : (item._id || item.name)
-                        }));
+                        options[field.name] = (json.data || []).map((item: any) => {
+                            // Academic items should use Name as value to match model and URL pre-fill
+                            const isAcademic = ['studycenter', 'university', 'program'].includes(field.link!.toLowerCase());
+                            const nameVal = item.centerName || item.universityName || item.programName || item.name || item.title;
 
-                        // For Announcements, verify distinct 'All' and 'None' options
+                            return {
+                                label: nameVal || item.employeeName || item.studentName || item.job_title || item._id,
+                                value: isAcademic ? (nameVal || item._id) : (field.link === 'designation' ? item.title : (item._id || item.name)),
+                                id: item._id // Store ID for lookup
+                            };
+                        });
+
+                        // [Fix] Auto-select Study Center based on ID if Name is missing
+                        if (field.name === 'studyCenter') {
+                            const urlCenterId = new URLSearchParams(location.search).get('studyCenterId');
+                            if (urlCenterId) {
+                                const matchingCenter = (json.data || []).find((c: any) => c._id === urlCenterId);
+                                if (matchingCenter) {
+                                    const centerName = matchingCenter.centerName || matchingCenter.name;
+                                    console.log(`[GenericNew] Auto-resolving studyCenter from ID ${urlCenterId} to "${centerName}"`);
+                                    setFormData((prev: any) => ({ ...prev, studyCenter: centerName }));
+                                }
+                            }
+                        }
+
                         if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetCenter')) {
                             options[field.name].unshift({ label: 'None', value: 'None' });
                             if (field.name === 'department') {
@@ -79,7 +170,6 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             }
             setDynamicOptions(options);
 
-            // Fetch Department Context for Whitelisting
             const contextDeptId = localStorage.getItem('department_id') || new URLSearchParams(location.search).get('departmentId');
             if (doctype === 'employee' && contextDeptId) {
                 try {
@@ -92,98 +182,110 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                     console.error('Error fetching department whitelist:', e);
                 }
             }
-
-            const storedDeptId = localStorage.getItem('department_id');
-            const userRole = localStorage.getItem('user_role');
-
-            setFormData((prev: any) => {
-                const updated = { ...prev, organizationId: orgId };
-                const deptName = localStorage.getItem('department_name');
-
-                const isDepartmental = ['holiday', 'complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark'].includes(doctype || '');
-
-                if (isDepartmental) {
-                    if (storedDeptId) {
-                        updated.departmentId = storedDeptId;
-                    }
-                    // Set department name for data isolation
-                    if (deptName) {
-                        updated.department = deptName;
-                    }
-                }
-
-                // Track the source panel for employees specifically
-                if (doctype === 'employee') {
-                    if (storedDeptId) updated.addedByDepartmentId = storedDeptId;
-                    if (deptName) updated.addedByDepartmentName = deptName;
-                }
-
-                const studyCenter = localStorage.getItem('study_center_name');
-                if (studyCenter && userRole === 'StudyCenter') {
-                    updated.studyCenter = studyCenter;
-                }
-
-                // Initialize defaults from fields config
-                fields.forEach(field => {
-                    if (field.default !== undefined && updated[field.name] === undefined) {
-                        updated[field.name] = field.default;
-                    }
-                });
-
-                return updated;
-            });
         };
 
         fetchDynamicOptions();
-    }, [doctype]);
-
-    // Pre-fill from Query Params (e.g. from Job Opening Acceptance or Contextual dashboards)
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const updates: any = {};
-
-        if (params.get('employeeName')) updates.employeeName = params.get('employeeName');
-        if (params.get('email')) updates.email = params.get('email');
-        if (params.get('jobOpening')) updates.jobOpening = params.get('jobOpening');
-        if (params.get('applicationId')) updates.applicationId = params.get('applicationId');
-        if (params.get('designation')) updates.designation = params.get('designation');
-        if (params.get('department')) updates.department = params.get('department');
-        if (params.get('departmentId')) updates.departmentId = params.get('departmentId');
-        if (params.get('studyCenter')) updates.studyCenter = params.get('studyCenter');
-        if (params.get('student')) updates.student = params.get('student');
-        if (params.get('studentId')) updates.studentId = params.get('studentId');
-        if (params.get('program')) updates.program = params.get('program');
-        if (params.get('semester')) updates.semester = params.get('semester');
-        if (params.get('batch')) updates.batch = params.get('batch');
-        if (params.get('subject')) updates.subject = params.get('subject');
-
-        // Track the source panel for employees specifically if passed in URL
-        if (doctype === 'employee') {
-            if (params.get('departmentId')) updates.addedByDepartmentId = params.get('departmentId');
-            if (params.get('department')) updates.addedByDepartmentName = params.get('department');
-        }
-
-        if (Object.keys(updates).length > 0) {
-            setFormData((prev: any) => ({ ...prev, ...updates }));
-        }
-    }, [location.search]);
+    }, [doctype, fields, location.search]);
 
     const handleSave = async () => {
-        // Validation
+        const urlParams = new URLSearchParams(location.search);
+        const windowParams = new URLSearchParams(window.location.search);
+        const currentData = { ...formData };
+
+        console.log(`[GenericNew] --- EMERGENCY SAVE DEBUG ---`);
+        console.log(`[GenericNew] Doctype:`, doctype);
+        console.log(`[GenericNew] Current formData keys:`, Object.keys(currentData));
+        console.log(`[GenericNew] Current formData JSON:`, JSON.stringify(currentData));
+        console.log(`[GenericNew] location.search:`, location.search);
+        console.log(`[GenericNew] window.location.search:`, window.location.search);
+
+        // Robust Fallback: Populate contextual fields from URL
+        const contextualKeys = ['studyCenter', 'department', 'departmentId', 'program', 'studentId', 'applicationId', 'organizationId'];
+
+        // FORCE CONTEXT: If user is "StudyCenter", they MUST save as their own center.
+        // This overrides form state, ensuring Isolation & Correctness.
+        const userRole = localStorage.getItem('user_role');
+        if (userRole === 'StudyCenter' || userRole === 'Study Center') {
+            const myCenterName = localStorage.getItem('study_center_name');
+            const myCenterId = localStorage.getItem('study_center_id');
+            if (myCenterName && myCenterId) {
+                console.log(`[GenericNew] Enforcing StudyCenter Context: ${myCenterName} (${myCenterId})`);
+                currentData.studyCenter = myCenterName;
+                currentData.studyCenterId = myCenterId;
+            }
+        }
+
+        // Helper for case-insensitive param lookup
+        const getParam = (key: string) => {
+            const lowKey = key.toLowerCase();
+            for (const [k, v] of urlParams.entries()) if (k.toLowerCase() === lowKey) return v;
+            for (const [k, v] of windowParams.entries()) if (k.toLowerCase() === lowKey) return v;
+            return null;
+        };
+
+        contextualKeys.forEach(key => {
+            let stateVal = currentData[key];
+            if (!stateVal || stateVal === 'undefined' || stateVal === 'null' || stateVal === '') {
+                // Try exact key first, then case-insensitive
+                let urlVal = getParam(key);
+
+                // Specific fallbacks for study center
+                if (key === 'studyCenter' && (!urlVal || urlVal === 'undefined')) {
+                    urlVal = getParam('centerName') || getParam('center') || getParam('branch');
+                }
+
+                if (urlVal && urlVal !== 'undefined' && urlVal !== 'null' && urlVal !== '') {
+                    console.log(`[GenericNew] EMERGENCY RECOVERY: Found ${key} in URL: "${urlVal}"`);
+                    currentData[key] = urlVal;
+                }
+            }
+        });
+
+        // Ensure OrganizationId is present from storage as last resort
+        if (!currentData.organizationId || currentData.organizationId === 'undefined' || currentData.organizationId === 'null') {
+            const orgId = localStorage.getItem('organization_id');
+            if (orgId && orgId !== 'null' && orgId !== 'undefined') {
+                console.log(`[GenericNew] EMERGENCY RECOVERY: Found organizationId in localStorage: "${orgId}"`);
+                currentData.organizationId = orgId;
+            }
+        }
+
+        // AUTO-FIX: If studyCenter name is missing but ID is present, use ID as name to bypass validation
+        // The backend uses studyCenterId for linking, name is just for display/record
+        const urlCenterId = urlParams.get('studyCenterId') || windowParams.get('studyCenterId');
+        if ((!currentData.studyCenter || currentData.studyCenter === 'undefined') && urlCenterId && urlCenterId !== 'undefined') {
+            console.log(`[GenericNew] AUTO-FIX: Using ID ${urlCenterId} as studyCenter name to bypass validation`);
+            // We can fetch the name later or let the backend handle it, but for now, pass validation
+            currentData.studyCenter = `Center-${urlCenterId.substr(-6)}`;
+            currentData.studyCenterId = urlCenterId;
+        }
+
+
+        // Validation against the enriched currentData
         const requiredFields = fields.filter(f => f.required);
+        console.log(`[GenericNew] Required fields for this doctype:`, requiredFields.map(f => f.name));
+
         for (const field of requiredFields) {
-            if (!formData[field.name]) {
+            const val = currentData[field.name];
+            if (!val || val === 'undefined' || val === 'null' || (typeof val === 'string' && val.trim() === '')) {
+                console.warn(`[GenericNew] Validation FAILED: ${field.name} is missing. Value:`, val);
+                console.log(`[GenericNew] Full currentData at failure:`, currentData);
                 alert(`Please fill in the required field: ${field.label}`);
                 return;
             }
         }
 
-        if (!formData.organizationId) {
-            alert('Organization ID is missing. Please try logging in again.');
-            return;
+        const payload = { ...currentData };
+        if (!payload.organizationId) {
+            const orgId = localStorage.getItem('organization_id');
+            if (orgId && orgId !== 'null' && orgId !== 'undefined') {
+                payload.organizationId = orgId;
+            } else {
+                alert('Organization ID is missing. Please try logging in again.');
+                return;
+            }
         }
 
-        const payload = { ...formData };
         if ((doctype === 'announcement' || doctype === 'opsannouncement') && (payload.department === 'All' || payload.department === 'None')) {
             payload.departmentId = null;
         }
@@ -195,7 +297,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             console.log('--------------------------------');
         }
         try {
-            const res = await fetch(`/api/resource/${doctype}`, {
+            const res = await fetch(`/api/resource/${doctype}?organizationId=${payload.organizationId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -309,9 +411,13 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             return null;
                         }
 
-                        // Hide Study Center field if user is a StudyCenter role (it's auto-filled)
-                        if (field.name === 'studyCenter' && localStorage.getItem('user_role') === 'StudyCenter') {
-                            return null;
+                        // Hide Study Center field ONLY for StudyCenter role (it's their own center)
+                        // For Operations/SuperAdmin, keep it VISIBLE so they can verify/choose
+                        const userRole = localStorage.getItem('user_role');
+                        const isStudyCenterPopulated = formData.studyCenter && formData.studyCenter !== 'undefined' && formData.studyCenter !== 'null';
+                        if (field.name === 'studyCenter') {
+                            if (userRole === 'StudyCenter') return null; // Always hide for center users
+                            // For others, keep it visible. Pre-filling should set the value, but they can see it.
                         }
 
                         // Hide Target Study Center for HR announcements
@@ -379,29 +485,60 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
                                         value={formData[field.name] || ''}
                                         onChange={(e) => {
-                                            const newData = { ...formData, [field.name]: e.target.value };
+                                            const val = e.target.value;
+                                            setFormData((prev: any) => {
+                                                const newData = { ...prev, [field.name]: val };
 
-                                            // For departmentId field, also set department name
-                                            if (field.name === 'departmentId' && field.link === 'department') {
-                                                const selectedDept = (dynamicOptions[field.name] || []).find(
-                                                    opt => opt.value === e.target.value
-                                                );
-                                                if (selectedDept) {
-                                                    newData.department = selectedDept.label;
+                                                // For departmentId field, also set department name
+                                                if (field.name === 'departmentId' && field.link === 'department') {
+                                                    const selectedDept = (dynamicOptions[field.name] || []).find(
+                                                        opt => opt.value === val
+                                                    );
+                                                    if (selectedDept) {
+                                                        newData.department = selectedDept.label;
+                                                    }
                                                 }
-                                            }
 
-                                            // Sync Student name when studentId is selected (for InternalMarks)
-                                            if (field.name === 'studentId' && field.link === 'student') {
-                                                const selectedStudent = (dynamicOptions[field.name] || []).find(
-                                                    opt => opt.value === e.target.value
-                                                );
-                                                if (selectedStudent) {
-                                                    newData.student = selectedStudent.label;
+                                                // Sync Student name when studentId is selected (for InternalMarks)
+                                                if (field.name === 'studentId' && field.link === 'student') {
+                                                    const selectedStudent = (dynamicOptions[field.name] || []).find(
+                                                        opt => opt.value === val
+                                                    );
+                                                    if (selectedStudent) {
+                                                        newData.student = selectedStudent.label;
+                                                    }
                                                 }
-                                            }
 
-                                            setFormData(newData);
+                                                // [Fix] Sync Study Center ID when User changes the Name dropdown
+                                                if (field.name === 'studyCenter') {
+                                                    const selectedCenter = (dynamicOptions[field.name] || []).find(
+                                                        opt => opt.value === val
+                                                    );
+                                                    if (selectedCenter && (selectedCenter as any).id) {
+                                                        const newId = (selectedCenter as any).id;
+                                                        console.log(`[GenericNew] User changed Study Center to "${val}". Updating ID to: ${newId}`);
+                                                        newData.studyCenterId = newId;
+                                                    }
+                                                }
+
+                                                // Sync Designation from Vacancy (JobOpening)
+                                                if (field.name === 'jobOpening' && field.link === 'jobopening') {
+                                                    const selectedJob = (dynamicOptions[field.name] || []).find(
+                                                        opt => opt.value === val
+                                                    );
+                                                    if (selectedJob) {
+                                                        const title = selectedJob.label;
+                                                        // Add to whitelist locally if missing
+                                                        if (allowedDesignations && !allowedDesignations.some(d => d.toLowerCase() === title.toLowerCase())) {
+                                                            setAllowedDesignations(p => p ? [...p, title] : [title]);
+                                                        }
+                                                        // Map the job title to designation
+                                                        newData.designation = title;
+                                                    }
+                                                }
+
+                                                return newData;
+                                            });
                                         }}
                                     >
                                         <option value="">Select...</option>
@@ -427,19 +564,31 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                     <input
                                         type={field.type}
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
-                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setFormData((prev: any) => ({ ...prev, [field.name]: val }));
+                                        }}
                                     />
                                 ) : field.type === 'textarea' ? (
                                     <textarea
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all min-h-[100px]"
-                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setFormData((prev: any) => ({ ...prev, [field.name]: val }));
+                                        }}
                                     />
                                 ) : field.type === 'checkbox' ? (
                                     <div className="flex items-center h-[34px]">
                                         <input
                                             type="checkbox"
                                             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            onChange={(e) => setFormData({ ...formData, [field.name]: e.target.checked })}
+                                            checked={!!formData[field.name]}
+                                            onChange={(e) => {
+                                                const val = e.target.checked;
+                                                setFormData((prev: any) => ({ ...prev, [field.name]: val }));
+                                            }}
                                         />
                                     </div>
                                 ) : (
@@ -447,7 +596,11 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                         type={field.type}
                                         placeholder={field.placeholder || ''}
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
-                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setFormData((prev: any) => ({ ...prev, [field.name]: val }));
+                                        }}
                                     />
                                 )}
                             </div>

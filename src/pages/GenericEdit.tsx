@@ -111,12 +111,19 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
     const handleSave = async () => {
         setSaving(true);
         const payload = { ...formData };
+        if (!payload.organizationId) {
+            const orgId = localStorage.getItem('organization_id');
+            if (orgId && orgId !== 'null' && orgId !== 'undefined') {
+                payload.organizationId = orgId;
+            }
+        }
+
         if (doctype === 'announcement' && (payload.department === 'All' || payload.department === 'None')) {
             payload.departmentId = null;
         }
 
         try {
-            const orgId = localStorage.getItem('organization_id');
+            const orgId = payload.organizationId || localStorage.getItem('organization_id');
             const res = await fetch(`/api/resource/${doctype}/${id}?organizationId=${orgId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -138,7 +145,7 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
     const handleDelete = async () => {
         if (!confirm('Are you sure?')) return;
         try {
-            const orgId = localStorage.getItem('organization_id');
+            const orgId = formData.organizationId || localStorage.getItem('organization_id');
             const res = await fetch(`/api/resource/${doctype}/${id}?organizationId=${orgId}`, { method: 'DELETE' });
             if (res.ok) {
                 navigate(`/${doctype}`);
@@ -165,20 +172,24 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={handleDelete} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors mr-2">
-                        <Trash2 size={18} />
-                    </button>
+                    {!(doctype === 'complaint' && localStorage.getItem('user_role') === 'HR') && (
+                        <button onClick={handleDelete} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors mr-2">
+                            <Trash2 size={18} />
+                        </button>
+                    )}
                     <button onClick={() => navigate(-1)} className="bg-white border border-[#d1d8dd] px-4 py-1.5 rounded text-[13px] font-semibold hover:bg-gray-50">
-                        Cancel
+                        {doctype === 'complaint' && localStorage.getItem('user_role') === 'HR' ? 'Back' : 'Cancel'}
                     </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="bg-blue-600 text-white px-6 py-1.5 rounded text-[13px] font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
-                    >
-                        <Save size={14} />
-                        {saving ? 'Saving...' : 'Save'}
-                    </button>
+                    {!(doctype === 'complaint' && localStorage.getItem('user_role') === 'HR') && (
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="bg-blue-600 text-white px-6 py-1.5 rounded text-[13px] font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
+                        >
+                            <Save size={14} />
+                            {saving ? 'Saving...' : 'Save'}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -204,9 +215,10 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
 
                             {field.type === 'select' ? (
                                 <select
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
+                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all disabled:opacity-70"
                                     value={formData[field.name] || ''}
                                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                    disabled={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
                                 >
                                     <option value="">Select...</option>
                                     {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
@@ -217,24 +229,27 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                             ) : field.type === 'date' ? (
                                 <input
                                     type="date"
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
+                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
                                     value={formData[field.name]?.split('T')[0] || ''}
                                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                    readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
                                 />
                             ) : field.type === 'textarea' ? (
                                 <textarea
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all min-h-[100px]"
+                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all min-h-[100px] read-only:opacity-70"
                                     value={formData[field.name] || ''}
                                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                                     placeholder={field.placeholder || ''}
+                                    readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
                                 />
                             ) : (
                                 <input
                                     type={field.type}
                                     placeholder={field.placeholder || ''}
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
+                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
                                     value={formData[field.name] || ''}
                                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                    readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
                                 />
                             )}
                         </div>

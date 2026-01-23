@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, Bell, UserCheck, Clock, CheckCircle, ClipboardList, ArrowRight, UserPlus, Search, Users, Trash2 } from 'lucide-react';
 import Workspace from '../components/Workspace';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import AnnouncementPopup from '../components/AnnouncementPopup';
 import PollWidget from '../components/PollWidget';
 
@@ -21,7 +21,8 @@ export default function CenterDashboard() {
     const [userCenterId, setUserCenterId] = useState(localStorage.getItem('study_center_id'));
     const [search, setSearch] = useState('');
     const location = useLocation();
-    const centerName = localStorage.getItem('study_center_name');
+    const [searchParams] = useSearchParams();
+    const centerName = localStorage.getItem('study_center_name') || searchParams.get('centerName');
 
     const fetchDashboardData = async (resolvedId?: string) => {
         try {
@@ -56,11 +57,35 @@ export default function CenterDashboard() {
             const stds = jsonStd.data || [];
             const mrks = jsonMarks.data || [];
             const rawAnns = jsonAnn.data || [];
-            setApplications(apps);
-            setStudents(stds);
-            setFilteredStudents(stds);
-            setMarks(mrks);
-            setFilteredMarks(mrks);
+            // STRICT FILTERING: Ensure we ONLY show data for this center
+            // This is a safety net in case the backend returns loose data
+            const targetCenterName = (centerName || '').trim().toLowerCase();
+            const targetCenterId = (resolvedId || userCenterId || '').trim();
+
+            const strictFilter = (item: any) => {
+                if (!item.studyCenter && !item.studyCenterId) return false; // Orphaned data
+
+                const itemName = (item.studyCenter || '').toString().trim().toLowerCase();
+                const itemId = (item.studyCenterId || '').toString().trim();
+
+                // Match by ID if available (most robust)
+                if (targetCenterId && itemId && itemId === targetCenterId) return true;
+
+                // Match by Name (case-insensitive)
+                if (targetCenterName && itemName === targetCenterName) return true;
+
+                return false;
+            };
+
+            const isolatedStudents = isCenterIsolated ? stds.filter(strictFilter) : stds;
+            const isolatedMarks = isCenterIsolated ? mrks.filter(strictFilter) : mrks;
+            const isolatedApps = isCenterIsolated ? apps.filter(strictFilter) : apps;
+
+            setApplications(isolatedApps);
+            setStudents(isolatedStudents);
+            setFilteredStudents(isolatedStudents);
+            setMarks(isolatedMarks);
+            setFilteredMarks(isolatedMarks);
             console.log(`[Dashboard] Fetched Marks: ${mrks.length}`, mrks);
 
             // --- Respective Filtering Logic with Diagnostic Logging ---
@@ -237,9 +262,9 @@ export default function CenterDashboard() {
     ];
 
     const shortcuts = [
-        { label: 'Register STUDENT', href: '/student/new' },
-        { label: 'Start STUDENT', href: '/studentapplicant/new' },
-        { label: 'Submit Marks', href: `/internalmark/new?studyCenter=${encodeURIComponent(centerName || '')}` },
+        { label: 'Register STUDENT', href: `/student/new?studyCenter=${encodeURIComponent(centerName || '')}&studyCenterId=${userCenterId || ''}&redirect=/center-dashboard` },
+        { label: 'Start STUDENT', href: `/studentapplicant/new?studyCenter=${encodeURIComponent(centerName || '')}&studyCenterId=${userCenterId || ''}&redirect=/center-dashboard` },
+        { label: 'Submit Marks', href: `/internalmark/new?studyCenter=${encodeURIComponent(centerName || '')}&studyCenterId=${userCenterId || ''}&redirect=/center-dashboard` },
 
     ];
 
@@ -269,7 +294,7 @@ export default function CenterDashboard() {
         <div className="space-y-8 pb-20 text-[#1d2129] animate-in">
             <Workspace
                 title={`${centerName || 'Center'} Hub`}
-                newHref="/student/new"
+                newHref={`/student/new?studyCenter=${encodeURIComponent(centerName || '')}&studyCenterId=${userCenterId || ''}&redirect=/center-dashboard`}
                 newLabel="Add STUDENT"
                 summaryItems={[
                     { label: 'Total STUDENTS', value: loading ? '...' : counts.student, color: 'text-blue-500', doctype: 'student' },
@@ -548,7 +573,7 @@ export default function CenterDashboard() {
                                 <UserPlus className="text-blue-600" size={24} />
                                 STUDENTS & Records
                             </h3>
-                            <Link to="/student/new" className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-[12px] font-black shadow-md hover:scale-105 transition-transform no-underline">
+                            <Link to={`/student/new?studyCenter=${encodeURIComponent(centerName || '')}&studyCenterId=${userCenterId || ''}&redirect=/center-dashboard`} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-[12px] font-black shadow-md hover:scale-105 transition-transform no-underline">
                                 Add New STUDENT
                             </Link>
                         </div>

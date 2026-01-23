@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Save, ArrowLeft, Building2, Briefcase, User, Mail, Lock, Calendar } from 'lucide-react';
+import { UserPlus, Save, ArrowLeft, Building2, Briefcase, User, Mail, Lock, Calendar, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Workspace from '../../components/Workspace';
 
@@ -14,7 +14,6 @@ export default function EmployeeOnboardingNew() {
     const [formData, setFormData] = useState({
         employeeName: '',
         email: '',
-        username: '',
         password: '',
         department: '',
         departmentId: '',
@@ -23,7 +22,7 @@ export default function EmployeeOnboardingNew() {
         dateOfJoining: new Date().toISOString().split('T')[0],
         status: 'Active',
         vacancy: '', // Linked vacancy
-        employeeId: `EMP-${Math.floor(Math.random() * 10000)}` // Temporary auto-gen
+        employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}` // Temporary auto-gen
     });
 
     useEffect(() => {
@@ -72,6 +71,21 @@ export default function EmployeeOnboardingNew() {
             .then(res => res.json())
             .then(json => setManagers(json.data || []))
             .catch(console.error);
+
+        // Pre-fill from Query Parameters (e.g. Applicant Acceptance)
+        const params = new URLSearchParams(window.location.search);
+        const updates: any = {};
+        if (params.get('employeeId')) updates.employeeId = params.get('employeeId');
+        if (params.get('employeeName')) updates.employeeName = params.get('employeeName');
+        if (params.get('email')) updates.email = params.get('email');
+        if (params.get('designation')) updates.designation = params.get('designation');
+        if (params.get('departmentId')) updates.departmentId = params.get('departmentId');
+        if (params.get('vacancy')) updates.vacancy = params.get('vacancy');
+        if (params.get('jobOpening')) updates.vacancy = params.get('jobOpening');
+
+        if (Object.keys(updates).length > 0) {
+            setFormData(prev => ({ ...prev, ...updates }));
+        }
     }, []);
 
     const handleVacancyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -126,6 +140,7 @@ export default function EmployeeOnboardingNew() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
+                    username: formData.employeeId, // Set username to be the same as employeeId
                     jobOpening: formData.vacancy || undefined, // Map vacancy -> jobOpening for backend enforcement
                     organizationId: orgId
                 })
@@ -284,18 +299,19 @@ export default function EmployeeOnboardingNew() {
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[13px] font-medium text-gray-700">Username <span className="text-red-500">*</span></label>
+                                <label className="text-[13px] font-medium text-gray-700">Employee ID <span className="text-red-500">*</span></label>
                                 <div className="relative">
-                                    <User className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                                    <Shield className="absolute left-3 top-2.5 text-gray-400" size={16} />
                                     <input
                                         required
                                         type="text"
-                                        className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="johndoe"
-                                        value={formData.username}
-                                        onChange={e => setFormData({ ...formData, username: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
+                                        placeholder="EMP-XXXX"
+                                        value={formData.employeeId}
+                                        onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
                                     />
                                 </div>
+                                <p className="text-[10px] text-gray-400 mt-1 italic">This ID will be used for staff portal login.</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-[13px] font-medium text-gray-700">Login Password <span className="text-red-500">*</span></label>

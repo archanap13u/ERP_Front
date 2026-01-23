@@ -50,7 +50,7 @@ export default function EmployeeDashboard() {
                 const baseQuery = `?organizationId=${orgId || ''}`;
                 const annQuery = `${baseQuery}${isRestricted && deptId ? `&departmentId=${deptId}` : ''}`;
                 const holQuery = baseQuery; // Holidays are always org-wide in our inheritance model
-                const compQuery = `${baseQuery}${storedId ? `&employeeId=${storedId}` : ''}`;
+                const compQuery = `${baseQuery}${storedId ? `&employeeId=${storedId}` : ''}${storedName ? `&employeeName=${encodeURIComponent(storedName)}` : ''}`;
 
                 const [resAnn, resHol, resComp] = await Promise.all([
                     fetch(`/api/resource/announcement${annQuery}`),
@@ -268,9 +268,19 @@ export default function EmployeeDashboard() {
                         ) : (
                             complaints.slice(0, 3).map((comp, idx) => (
                                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div>
-                                        <p className="text-[13px] font-bold text-[#1d2129]">{comp.subject}</p>
-                                        <p className="text-[11px] text-gray-500">{new Date(comp.date || comp.createdAt).toLocaleDateString()}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Subject</p>
+                                        <p className="text-[14px] font-bold text-[#1d2129]">{comp.subject}</p>
+
+                                        <div className="mt-3 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Complaint Content</p>
+                                            <p className="text-[12px] text-gray-600 line-clamp-3 italic leading-relaxed">"{comp.description}"</p>
+                                        </div>
+
+                                        <p className="text-[10px] text-gray-400 mt-2 uppercase font-black tracking-widest flex items-center gap-1.5">
+                                            <Clock size={10} />
+                                            {new Date(comp.date || comp.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </p>
                                     </div>
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${comp.status === 'Resolved' ? 'bg-green-100 text-green-700' :
                                         comp.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :

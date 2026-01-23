@@ -16,6 +16,7 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
     const [hiredCounts, setHiredCounts] = useState<Record<string, number>>({});
 
     // Determine context
+    const [searchTerm, setSearchTerm] = useState('');
     const userRole = localStorage.getItem('user_role');
     const deptName = localStorage.getItem('department_name');
 
@@ -83,6 +84,23 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                 if (!isGlobalDoctype || !isAdminOrHR) {
                     if (deptId) url += `&departmentId=${deptId}`;
                     if (deptName) url += `&department=${encodeURIComponent(deptName)}`;
+                }
+
+                // Extra privacy for complaints: Employees only see their own
+                if (doctype === 'complaint' && userRole === 'Employee') {
+                    const storedEmpId = localStorage.getItem('employee_id');
+                    const storedEmpName = localStorage.getItem('user_name');
+                    if (storedEmpId) url += `&employeeId=${storedEmpId}`;
+                    if (storedEmpName) url += `&employeeName=${encodeURIComponent(storedEmpName)}`;
+                }
+
+                // [Fix] Enforce Isolation for Study Center Users
+                // They should ONLY see data related to their center
+                if ((userRole === 'StudyCenter' || userRole === 'Study Center') && ['student', 'studentapplicant', 'internalmark'].includes(doctype || '')) {
+                    const myCenterId = localStorage.getItem('study_center_id');
+                    const myCenterName = localStorage.getItem('study_center_name');
+                    if (myCenterId) url += `&studyCenterId=${myCenterId}`;
+                    if (myCenterName) url += `&studyCenter=${encodeURIComponent(myCenterName)}`;
                 }
 
                 const dataPromise = fetch(url).then(res => res.json());
@@ -177,8 +195,10 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                         <input
                             type="text"
-                            placeholder="Search..."
-                            className="w-full pl-9 pr-4 py-1.5 bg-white border border-[#d1d8dd] rounded text-[13px] focus:outline-none focus:border-blue-400"
+                            placeholder={`Search ${displayTitle}...`}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-4 py-1.5 bg-white border border-[#d1d8dd] rounded text-[13px] focus:outline-none focus:border-blue-400 font-medium"
                         />
                     </div>
                     <button className="flex items-center gap-2 text-[13px] text-[#626161] hover:text-blue-600 font-medium px-2 py-1">
@@ -193,6 +213,7 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                             <tr className="bg-[#f0f4f7] border-b border-[#d1d8dd] text-[#8d99a6] font-bold uppercase tracking-wider">
                                 <th className="px-4 py-2 w-10"><input type="checkbox" className="rounded" /></th>
                                 <th className="px-4 py-2">Name</th>
+                                {doctype === 'employee' && <th className="px-4 py-2">ID</th>}
                                 {doctype === 'employee' && <th className="px-4 py-2">Department</th>}
                                 {doctype === 'employee' && <th className="px-4 py-2">Designation</th>}
                                 {doctype === 'employee' && <th className="px-4 py-2">Reports To</th>}
@@ -219,6 +240,12 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                         if (doctype !== 'student' || filterStatus === 'All') return true;
                                         return item.verificationStatus === filterStatus;
                                     })
+                                    .filter(item => {
+                                        if (!searchTerm) return true;
+                                        const search = searchTerm.toLowerCase();
+                                        const values = Object.values(item).map(v => String(v).toLowerCase());
+                                        return values.some(v => v.includes(search));
+                                    })
                                     .map((item, idx) => (
                                         <tr
                                             key={idx}
@@ -227,8 +254,13 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                         >
                                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><input type="checkbox" className="rounded" /></td>
                                             <td className="px-4 py-3 font-medium text-blue-600 hover:underline">
-                                                {item.name || item.job_title || item.title || item.subject || item.holidayName || item.universityName || item.centerName || item.programName || item.employeeName || item.studentName || item.student || item._id}
+                                                {item.employeeName || item.name || item.job_title || item.title || item.subject || item.holidayName || item.universityName || item.centerName || item.programName || item.studentName || item.student || item._id}
                                             </td>
+                                            {doctype === 'employee' && (
+                                                <td className="px-4 py-3 text-[#1d2129] font-mono font-medium">
+                                                    {item.employeeId || '-'}
+                                                </td>
+                                            )}
                                             {doctype === 'employee' && (
                                                 <td className="px-4 py-3 text-[#1d2129]">
                                                     {item.department || '-'}

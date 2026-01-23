@@ -3,6 +3,7 @@ import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Mega
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';
+import DepartmentWorkLog from '../components/DepartmentWorkLog';
 import DepartmentStudentManager from '../components/DepartmentStudentManager';
 import ApplicationPanel from '../components/ApplicationPanel';
 
@@ -186,12 +187,19 @@ export default function OpsDashboard() {
                                             onClick={async () => {
                                                 if (!confirm(`Verify student ${student.studentName}? This will send them to Finance approval.`)) return;
                                                 try {
-                                                    const res = await fetch(`/api/resource/student/${student._id}?organizationId=${localStorage.getItem('organization_id')}`, {
+                                                    const storedOrgId = localStorage.getItem('organization_id');
+                                                    const orgId = (storedOrgId === 'null' || storedOrgId === 'undefined') ? '' : (storedOrgId || '');
+
+                                                    const res = await fetch(`/api/resource/student/${student._id}?organizationId=${orgId}`, {
                                                         method: 'PUT',
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({ verificationStatus: 'Verified by Ops' })
                                                     });
                                                     if (res.ok) window.location.reload();
+                                                    else {
+                                                        const err = await res.json();
+                                                        alert(`Error: ${err.error || 'Failed to approve student'}`);
+                                                    }
                                                 } catch (e) { console.error(e); }
                                             }}
                                             className="bg-blue-600 text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-blue-700 shadow-sm"
@@ -399,6 +407,15 @@ export default function OpsDashboard() {
                     </div>
                 </div>
 
+                {/* Operations Team Work Log */}
+                <div className="mb-8">
+                    <DepartmentWorkLog
+                        departmentId={contextData.id}
+                        organizationId={localStorage.getItem('organization_id') || ''}
+                        title="Operations Team Work Log"
+                    />
+                </div>
+
                 <div className="bg-white rounded-xl border border-[#d1d8dd] shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-[#d1d8dd] bg-gray-50/50 flex items-center justify-between">
                         <h3 className="text-[16px] font-bold text-[#1d2129] flex items-center gap-2">
@@ -452,6 +469,13 @@ export default function OpsDashboard() {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <Link
+                                            to={`/student/new?studyCenter=${encodeURIComponent(center.centerName || center.name || '')}&studyCenterId=${center._id}&redirect=/ops-dashboard`}
+                                            className="text-[11px] font-black bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 flex items-center gap-1.5 hover:bg-blue-100 transition-all shadow-sm no-underline"
+                                            title="Add Student to this Center"
+                                        >
+                                            <UserPlus size={14} /> Add Student
+                                        </Link>
+                                        <Link
                                             to="/login"
                                             target="_blank"
                                             className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-[12px] font-black shadow-md hover:bg-indigo-700 transition-all flex items-center gap-2 no-underline"
@@ -480,19 +504,19 @@ export default function OpsDashboard() {
                 </div>
             )}
 
-            <div className="max-w-6xl mx-auto">
-                <h3 className="text-[16px] font-bold mb-4 flex items-center gap-2">
-                    <TrendingUp size={18} className="text-blue-600" />
-                    Admission Trends
-                </h3>
-                <div className="p-10 bg-white border-dashed border-2 border-gray-100 rounded-xl flex flex-col items-center justify-center min-h-[300px]">
-                    <GraduationCap size={48} className="text-gray-100 mb-4" />
-                    <p className="text-gray-400 font-medium">Monthly Enrollment Analytics</p>
-                    <p className="text-[12px] text-gray-300">Data visualization module connecting...</p>
-                </div>
-            </div>
+            {/* <div className="max-w-6xl mx-auto"> */}
+            {/* <h3 className="text-[16px] font-bold mb-4 flex items-center gap-2"> */}
+            {/* <TrendingUp size={18} className="text-blue-600" /> */}
+            {/* Admission Trends */}
+            {/* </h3> */}
+            {/* <div className="p-10 bg-white border-dashed border-2 border-gray-100 rounded-xl flex flex-col items-center justify-center min-h-[300px]"> */}
+            {/* <GraduationCap size={48} className="text-gray-100 mb-4" /> */}
+            {/* <p className="text-gray-400 font-medium">Monthly Enrollment Analytics</p> */}
+            {/* <p className="text-[12px] text-gray-300">Data visualization module connecting...</p> */}
+            {/* </div> */}
+            {/* </div> */}
 
-            <div className="max-w-6xl mx-auto space-y-8">
+            {/* <div className="max-w-6xl mx-auto space-y-8">
                 <DepartmentStaffManager
                     departmentId={contextData.id}
                     organizationId={localStorage.getItem('organization_id') || undefined}
@@ -562,7 +586,7 @@ export default function OpsDashboard() {
                     title="STUDENTS Enrollment & Support"
                     description="Hierarchical view of students and assigned mentors."
                 />
-            </div>
+            </div> */}
         </div>
     );
 }

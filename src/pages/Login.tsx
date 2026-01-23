@@ -79,7 +79,8 @@ export default function LoginPage() {
                     localStorage.setItem('study_center_id', data.user.id || data.user._id);
                 }
                 if (data.user.study_center_name) localStorage.setItem('study_center_name', data.user.study_center_name);
-                if (data.user.studyCenter) localStorage.setItem('study_center_name', data.user.studyCenter); // Backward compatibility if needed
+                if (data.user.studyCenter) localStorage.setItem('study_center_name', data.user.studyCenter);
+                if (data.user.centerName) localStorage.setItem('study_center_name', data.user.centerName); // Fix for studycenter document
 
                 if (data.user.role === 'HR' || data.user.role === 'Operations' || data.user.role === 'Finance' || data.user.role === 'DepartmentAdmin') {
                     // Fetch department details to ensure we have the correct department_name for isolation

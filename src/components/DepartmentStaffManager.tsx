@@ -30,6 +30,7 @@ export default function DepartmentStaffManager({ departmentId, organizationId: p
     useEffect(() => {
         fetchData();
         fetchDepartments();
+        fetchJobOpenings();
     }, [departmentId]);
 
     const fetchDepartments = async () => {
@@ -38,6 +39,17 @@ export default function DepartmentStaffManager({ departmentId, organizationId: p
             const res = await fetch(`/api/resource/department?organizationId=${orgId}`);
             const data = await res.json();
             if (data.success) setDepartments(data.data || []);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchJobOpenings = async () => {
+        try {
+            if (!orgId) return;
+            let url = `/api/resource/jobopening?organizationId=${orgId}&status=Open`;
+            if (departmentId) url += `&departmentId=${departmentId}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.success) setJobOpenings(data.data || []);
         } catch (err) { console.error(err); }
     };
 
@@ -127,8 +139,10 @@ export default function DepartmentStaffManager({ departmentId, organizationId: p
         email: '',
         username: '',
         password: '',
-        reportsTo: ''
+        reportsTo: '',
+        jobOpening: ''
     });
+    const [jobOpenings, setJobOpenings] = useState<any[]>([]);
 
 
     const [designations, setDesignations] = useState<any[]>([]);
@@ -393,7 +407,7 @@ export default function DepartmentStaffManager({ departmentId, organizationId: p
                 setEmployees([...employees, data.data]);
                 setFilteredEmployees([...employees, data.data]); // Update filtered too
                 setShowCreate(false);
-                setNewStaff({ employeeName: '', employeeId: '', designation: '', email: '', username: '', password: '', reportsTo: '' });
+                setNewStaff({ employeeName: '', employeeId: '', designation: '', email: '', username: '', password: '', reportsTo: '', jobOpening: '' });
                 setSuccess('new-created');
                 setTimeout(() => setSuccess(null), 3000);
             } else {
@@ -839,6 +853,34 @@ export default function DepartmentStaffManager({ departmentId, organizationId: p
                                     </div>
                                 )}
                                 <div className="space-y-1.5 text-left">
+                                    <label className="text-[11px] font-bold text-gray-600 flex items-center gap-1.5"><Shield size={12} /> Link Vacancy (Optional)</label>
+                                    <select
+                                        value={newStaff.jobOpening}
+                                        onChange={e => {
+                                            const jobOpeningId = e.target.value;
+                                            const job = jobOpenings.find(j => j._id === jobOpeningId);
+                                            if (job && job.job_title) {
+                                                const title = job.job_title;
+                                                const exists = activeDesignations.some(d => d.title === title);
+                                                if (!exists) {
+                                                    const newDes = { _id: `temp-${Date.now()}`, title: title, level: 1 };
+                                                    setDesignations(prev => [...prev, newDes]);
+                                                    setFormDesignations(prev => [...prev, newDes]);
+                                                }
+                                                setNewStaff({ ...newStaff, jobOpening: jobOpeningId, designation: title });
+                                            } else {
+                                                setNewStaff({ ...newStaff, jobOpening: jobOpeningId });
+                                            }
+                                        }}
+                                        className="w-full text-[13px] p-2.5 border rounded-lg h-[41px] shadow-sm focus:border-blue-400 outline-none bg-white transition-all appearance-none"
+                                    >
+                                        <option value="">Direct Hire (No Vacancy)</option>
+                                        {jobOpenings.map(j => (
+                                            <option key={j._id} value={j._id}>{j.job_title} ({j.department || 'General'})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5 text-left">
                                     <label className="text-[11px] font-bold text-gray-600 flex items-center gap-1.5"><User size={12} /> Full Name</label>
                                     <input required value={newStaff.employeeName} onChange={e => setNewStaff({ ...newStaff, employeeName: e.target.value })} className="w-full text-[13px] p-2.5 border rounded-lg shadow-sm focus:border-blue-400 outline-none bg-white transition-all" placeholder="e.g. Alice Smith" />
                                 </div>
@@ -953,7 +995,8 @@ export default function DepartmentStaffManager({ departmentId, organizationId: p
                         </form>
                     </div>
                 </>
-            )}
+            )
+            }
 
             <div className="p-5 bg-gray-50/20">
                 <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
@@ -984,12 +1027,14 @@ export default function DepartmentStaffManager({ departmentId, organizationId: p
                 )}
             </div>
 
-            {error && (
-                <div className="bg-red-50 text-red-600 text-[12px] p-4 text-center border-t border-red-100 flex items-center justify-center gap-2 animate-in slide-in-from-bottom-2">
-                    <AlertCircle size={16} />
-                    <span className="font-medium">{error}</span>
-                </div>
-            )}
-        </div>
+            {
+                error && (
+                    <div className="bg-red-50 text-red-600 text-[12px] p-4 text-center border-t border-red-100 flex items-center justify-center gap-2 animate-in slide-in-from-bottom-2">
+                        <AlertCircle size={16} />
+                        <span className="font-medium">{error}</span>
+                    </div>
+                )
+            }
+        </div >
     );
 }

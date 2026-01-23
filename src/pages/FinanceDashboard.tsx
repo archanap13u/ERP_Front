@@ -12,21 +12,41 @@ import {
     BookOpen,
     Users,
     GraduationCap,
-    Eye
+    Eye,
+    Edit,
+    Clock
 } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';
+import DepartmentWorkLog from '../components/DepartmentWorkLog';
 
 export default function FinanceDashboard() {
     const [counts, setCounts] = useState<{ [key: string]: number }>({});
     const [invoices, setInvoices] = useState<any[]>([]);
     const [pendingStudents, setPendingStudents] = useState<any[]>([]);
-    const [pendingEmployees, setPendingEmployees] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
+    const [employeeSearch, setEmployeeSearch] = useState('');
     const [loading, setLoading] = useState(true);
 
     const orgId = localStorage.getItem('organization_id');
     const deptId = localStorage.getItem('department_id');
+
+    const [departments, setDepartments] = useState<any[]>([]);
+    const [contextData, setContextData] = useState<{ id?: string, name?: string }>({});
+
+    useEffect(() => {
+        if (!orgId) return;
+        fetch(`/api/resource/department?organizationId=${orgId}`)
+            .then(res => res.json())
+            .then(json => {
+                const depts = json.data || [];
+                setDepartments(depts);
+                const finDept = depts.find((d: any) => d.panelType === 'Finance');
+                if (finDept) setContextData({ id: finDept._id, name: finDept.name });
+            })
+            .catch(err => console.error(err));
+    }, [orgId]);
 
     useEffect(() => {
         async function fetchData() {
@@ -36,8 +56,8 @@ export default function FinanceDashboard() {
                 let baseUrl = `/api/resource`;
                 let queryParams = `?organizationId=${orgId || ''}`;
 
-                if (deptId) {
-                    queryParams += `&departmentId=${deptId}`;
+                if (deptId || contextData.id) {
+                    queryParams += `&departmentId=${deptId || contextData.id}`;
                 }
 
                 const [resInv, resPay, resExp, resLead] = await Promise.all([
@@ -65,10 +85,10 @@ export default function FinanceDashboard() {
                 const jsonStd = await resStd.json();
                 setPendingStudents(jsonStd.data || []);
 
-                // Fetch Pending Employees
-                const resEmp = await fetch(`${baseUrl}/employee${queryParams}&verificationStatus=Pending`);
-                const jsonEmp = await resEmp.json();
-                setPendingEmployees(jsonEmp.data || []);
+                // Fetch All Finance Employees for Directory (regardless of verification status)
+                const resAllEmp = await fetch(`${baseUrl}/employee${queryParams}`);
+                const jsonAllEmp = await resAllEmp.json();
+                setEmployees(jsonAllEmp.data || []);
 
             } catch (e) {
                 console.error(e);
@@ -77,23 +97,7 @@ export default function FinanceDashboard() {
             }
         }
         fetchData();
-    }, []);
-
-    const [departments, setDepartments] = useState<any[]>([]);
-    const [contextData, setContextData] = useState<{ id?: string, name?: string }>({});
-
-    useEffect(() => {
-        if (!orgId) return;
-        fetch(`/api/resource/department?organizationId=${orgId}`)
-            .then(res => res.json())
-            .then(json => {
-                const depts = json.data || [];
-                setDepartments(depts);
-                const finDept = depts.find((d: any) => d.panelType === 'Finance');
-                if (finDept) setContextData({ id: finDept._id, name: finDept.name });
-            })
-            .catch(err => console.error(err));
-    }, [orgId]);
+    }, [contextData.id]);
 
     return (
         <div className="space-y-8 pb-20 text-[#1d2129]">
@@ -213,117 +217,137 @@ export default function FinanceDashboard() {
                     </div>
                 </div>
 
-                {/* Pending Employee Verifications (New Section) */}
-                <div className="bg-white rounded-xl border border-[#d1d8dd] shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-[#d1d8dd] bg-amber-50/50 flex items-center justify-between">
-                        <h3 className="text-[16px] font-bold text-[#1d2129] flex items-center gap-2">
-                            <Users size={18} className="text-amber-600" />
-                            Pending Employee Verifications
+                {/* Inline Finance Staff Directory */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden mb-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                        <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                                <Users size={20} />
+                            </div>
+                            Finance Staff Directory
                         </h3>
-                        <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                            {pendingEmployees.length} PENDING
-                        </span>
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Search staff..."
+                                    value={employeeSearch}
+                                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:border-blue-400 w-full md:w-64"
+                                />
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            </div>
+                        </div>
                     </div>
-                    <div className="divide-y divide-gray-50 max-h-[300px] overflow-y-auto">
-                        {pendingEmployees.length === 0 ? (
-                            <div className="p-8 text-center text-gray-400 italic text-[13px]">No employees awaiting verification.</div>
-                        ) : (
-                            pendingEmployees.map((emp, idx) => (
-                                <div key={idx} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-amber-50 text-amber-600 rounded">
-                                            <Users size={16} />
-                                        </div>
-                                        <div>
-                                            <p className="text-[13px] font-bold text-[#1d2129]">{emp.employeeName} ({emp.employeeId})</p>
-                                            <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium">
-                                                <span>{emp.department || 'No Dept'}</span>
-                                                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                                <span>{emp.designation || 'No Role'}</span>
-                                                {emp.studyCenter && (
-                                                    <>
-                                                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                                        <span>{emp.studyCenter}</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={async () => {
-                                                if (!confirm(`Verify employee ${emp.employeeName}?`)) return;
-                                                try {
-                                                    const res = await fetch(`/api/resource/employee/${emp._id}?organizationId=${orgId}`, {
-                                                        method: 'PUT',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ verificationStatus: 'Verified' })
-                                                    });
-                                                    if (res.ok) window.location.reload();
-                                                } catch (e) { console.error(e); }
-                                            }}
-                                            className="bg-amber-600 text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-amber-700 shadow-sm"
-                                        >
-                                            Verify
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                    <th className="px-4 py-3">Staff Member</th>
+                                    <th className="px-4 py-3">ID</th>
+                                    <th className="px-4 py-3">Designation</th>
+                                    <th className="px-4 py-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {employees
+                                    .filter(emp =>
+                                    (emp.employeeName?.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                                        emp.employeeId?.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                                        emp.designation?.toLowerCase().includes(employeeSearch.toLowerCase()))
+                                    )
+                                    .slice(0, 10).map((emp, idx) => (
+                                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                        {emp.employeeName?.charAt(0)}
+                                                    </div>
+                                                    <span className="text-[13px] font-bold text-gray-700">{emp.employeeName}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-[12px] text-gray-500 font-medium">{emp.employeeId}</td>
+                                            <td className="px-4 py-3">
+                                                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100 uppercase">
+                                                    {emp.designation}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <Link to={`/employee/${emp._id}`} className="text-gray-400 hover:text-blue-600 transition-colors">
+                                                    <Edit size={14} />
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                            </tbody>
+                        </table>
+                        {employees.length === 0 && (
+                            <div className="py-12 text-center text-gray-400 italic text-[14px]">
+                                No finance staff found.
+                            </div>
                         )}
                     </div>
                 </div>
 
-                {/* Financial Overview */}
-                <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-xl border border-[#d1d8dd] shadow-sm">
-                        <h3 className="text-[16px] font-bold text-[#1d2129] mb-4 flex items-center gap-2">
-                            <TrendingUp size={18} className="text-emerald-600" />
-                            Cash Flow Overview
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                                <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wide">Inflow</p>
-                                <p className="text-2xl font-bold text-emerald-700 mt-1">$12,450</p>
-                                <p className="text-[10px] text-emerald-500 flex items-center gap-1 mt-1">
-                                    <TrendingUp size={10} /> +12% this month
-                                </p>
-                            </div>
-                            <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                                <p className="text-[11px] font-bold text-red-600 uppercase tracking-wide">Outflow</p>
-                                <p className="text-2xl font-bold text-red-700 mt-1">$4,320</p>
-                                <p className="text-[10px] text-red-500 mt-1">
-                                    Software & Utilities
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-blue-600 text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
-                        <div className="relative z-10">
-                            <h4 className="text-[16px] font-bold mb-2">Quick Actions</h4>
-                            <div className="flex flex-wrap gap-2">
-                                <Link to="/salesinvoice/new" className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-[12px] font-medium backdrop-blur-sm transition-colors no-underline">
-                                    + New Invoice
-                                </Link>
-                                <Link to="/paymententry/new" className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-[12px] font-medium backdrop-blur-sm transition-colors no-underline">
-                                    + Receive Payment
-                                </Link>
-                                <button className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-[12px] font-medium backdrop-blur-sm transition-colors">
-                                    Generate Report
-                                </button>
-                            </div>
-                        </div>
-                        <Wallet className="absolute right-[-20px] bottom-[-20px] text-white/10" size={120} />
-                    </div>
-                </div>
-
-                <div className="col-span-1 lg:col-span-2">
-                    <DepartmentStaffManager
-                        departmentId={localStorage.getItem('department_id') || undefined}
-                        title="Finance Team Access"
-                        description="Manage credentials for finance department staff."
+                {/* Finance Team Work Log */}
+                <div className="lg:col-span-2 mb-8">
+                    <DepartmentWorkLog
+                        departmentId={contextData.id}
+                        organizationId={localStorage.getItem('organization_id') || ''}
+                        title="Finance Team Work Log"
                     />
                 </div>
+
+                {/* Financial Overview */}
+                <div className="bg-white p-6 rounded-xl border border-[#d1d8dd] shadow-sm">
+                    <h3 className="text-[16px] font-bold text-[#1d2129] mb-4 flex items-center gap-2">
+                        <TrendingUp size={18} className="text-emerald-600" />
+                        Cash Flow Overview
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wide">Inflow</p>
+                            <p className="text-2xl font-bold text-emerald-700 mt-1">$12,450</p>
+                            <p className="text-[10px] text-emerald-500 flex items-center gap-1 mt-1">
+                                <TrendingUp size={10} /> +12% this month
+                            </p>
+                        </div>
+                        <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                            <p className="text-[11px] font-bold text-red-600 uppercase tracking-wide">Outflow</p>
+                            <p className="text-2xl font-bold text-red-700 mt-1">$4,320</p>
+                            <p className="text-[10px] text-red-500 mt-1">
+                                Software & Utilities
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-blue-600 text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h4 className="text-[16px] font-bold mb-2">Quick Actions</h4>
+                        <div className="flex flex-wrap gap-2">
+                            <Link to="/salesinvoice/new" className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-[12px] font-medium backdrop-blur-sm transition-colors no-underline">
+                                + New Invoice
+                            </Link>
+                            <Link to="/paymententry/new" className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-[12px] font-medium backdrop-blur-sm transition-colors no-underline">
+                                + Receive Payment
+                            </Link>
+                            <button className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-[12px] font-medium backdrop-blur-sm transition-colors">
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+                    <Wallet className="absolute right-[-20px] bottom-[-20px] text-white/10" size={120} />
+                </div>
+            </div>
+
+            <div className="col-span-1 lg:col-span-2">
+                <DepartmentStaffManager
+                    departmentId={localStorage.getItem('department_id') || undefined}
+                    title="Finance Team Access"
+                    description="Manage credentials for finance department staff."
+                />
             </div>
         </div>
     );

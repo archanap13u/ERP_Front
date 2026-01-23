@@ -94,7 +94,8 @@ export default function ApplicationPanel({ departmentId, organizationId: propOrg
 
         setActionLoading(id);
         try {
-            const res = await fetch(`/api/resource/student/${id}?organizationId=${organizationId}`, {
+            const cleanOrgId = (organizationId === 'null' || organizationId === 'undefined') ? '' : (organizationId || '');
+            const res = await fetch(`/api/resource/student/${id}?organizationId=${cleanOrgId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ verificationStatus: 'Verified by Ops' })

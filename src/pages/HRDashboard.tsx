@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Workspace from '../components/Workspace';
 import CustomizationModal from '../components/CustomizationModal';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';
+import DepartmentWorkLog from '../components/DepartmentWorkLog';
 import PollWidget from '../components/PollWidget';
 
 export default function HRDashboard() {
@@ -343,25 +344,30 @@ export default function HRDashboard() {
                                     <div className="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-bold text-[12px]">
                                         {comp.employeeName?.charAt(0) || 'E'}
                                     </div>
-                                    <div>
-                                        <h4 className="text-[14px] font-bold text-[#1d2129]">{comp.subject}</h4>
-                                        <p className="text-[12px] text-gray-400">
-                                            By: {comp.employeeName || comp.employeeId || 'Anonymous'} • {new Date(comp.date || comp.createdAt).toLocaleDateString()}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1 leading-none">Subject</p>
+                                        <h4 className="text-[15px] font-bold text-[#1d2129] mb-3">{comp.subject}</h4>
+
+                                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm mb-3">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Complaint Detail</p>
+                                            <p className="text-[13px] text-gray-700 leading-relaxed italic line-clamp-3">"{comp.description}"</p>
+                                        </div>
+
+                                        <p className="text-[11px] text-gray-400 font-medium flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                                            Filer: <span className="font-bold text-gray-600 uppercase tracking-tighter">{comp.employeeName || comp.employeeId || 'Anonymous'}</span>
+                                            <span className="text-gray-200">|</span>
+                                            {new Date(comp.date || comp.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${comp.status === 'Resolved' ? 'bg-green-100 text-green-700' :
-                                        comp.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                                            comp.status === 'Dismissed' ? 'bg-gray-100 text-gray-600' :
-                                                'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                        {comp.status}
-                                    </span>
-                                    <Link to={`/complaint/${comp._id}`} className="text-gray-400 hover:text-blue-600 transition-colors">
-                                        <Edit size={14} />
-                                    </Link>
-                                </div>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${comp.status === 'Resolved' ? 'bg-green-100 text-green-700' :
+                                    comp.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                                        comp.status === 'Dismissed' ? 'bg-gray-100 text-gray-600' :
+                                            'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                    {comp.status}
+                                </span>
                             </div>
                         ))
                     )}
@@ -439,6 +445,15 @@ export default function HRDashboard() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Department-wide Work Log for HR */}
+            <div className="max-w-6xl mx-auto mt-8">
+                <DepartmentWorkLog
+                    organizationId={orgId || ''}
+                    isHR={true}
+                    title="Global Workforce Reports"
+                />
             </div>
 
             {/* Interactive Employee Management System */}
