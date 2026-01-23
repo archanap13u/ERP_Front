@@ -104,6 +104,9 @@ export default function CenterDashboard() {
                 if (startDate && now < startDate) return false;
                 if (endDate && now > endDate) return false;
 
+                // Show announcements targeted to 'All' centers
+                if (target === 'all') return true;
+
                 const nameMatch = target === currentCenter;
                 const idMatch = currentId && (target === currentId);
 
@@ -360,7 +363,7 @@ export default function CenterDashboard() {
                 </div>
 
                 {/* Inline Student Records List - NEW ADDITION */}
-                <div className="bg-white rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden mb-8">
+                <div className="bg-white rounded-2xl border border-[#d1d8dd] hidden shadow-sm   overflow-hidden mb-8">
                     <div className="p-4 border-b border-[#d1d8dd] bg-gradient-to-r from-blue-50 to-indigo-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex flex-col gap-4">
                             <h3 className="text-[16px] font-bold text-[#1d2129] flex items-center gap-2">

@@ -91,11 +91,22 @@ export default function EmployeeTransferPage() {
         const selectedDept = departments.find(d => d._id === formData.newDepartmentId);
 
         try {
+            // Get Organization ID
+            const storedOrgId = localStorage.getItem('organization_id');
+            const orgId = (storedOrgId === 'null' || storedOrgId === 'undefined' || !storedOrgId) ? '' : storedOrgId;
+
+            if (!orgId) {
+                alert('Error: Organization ID is missing. Please log out and log in again.');
+                setLoading(false);
+                return;
+            }
+
             // Update Employee Record
-            const res = await fetch(`/api/resource/employee/${selectedEmployeeId}`, {
+            const res = await fetch(`/api/resource/employee/${selectedEmployeeId}?organizationId=${orgId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    organizationId: orgId, // Ensure backend receives orgId in body
                     employeeName: formData.employeeName,
                     departmentId: formData.newDepartmentId || undefined,
                     department: selectedDept ? selectedDept.name : currentDetails.department,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, CalendarDays, MapPin, Lock, ExternalLink, ArrowRight, UserPlus, Users, ClipboardList, Edit, Clock, Pin, Plus } from 'lucide-react';
+import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, CalendarDays, MapPin, Lock, ExternalLink, ArrowRight, UserPlus, Users, ClipboardList, Edit, Clock, Pin, Plus, Search, Trash2 } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';
@@ -26,6 +26,9 @@ export default function OpsDashboard() {
     const [contextData, setContextData] = useState<{ id?: string, name?: string }>({});
     const [opsAnnouncements, setOpsAnnouncements] = useState<any[]>([]);
     const [holidays, setHolidays] = useState<any[]>([]);
+    const [internalMarks, setInternalMarks] = useState<any[]>([]);
+    const [markSearch, setMarkSearch] = useState('');
+    const [selectedCenter, setSelectedCenter] = useState('All');
 
     // Get features from localStorage (set during login)
     const userFeaturesRaw = localStorage.getItem('user_features');
@@ -66,17 +69,18 @@ export default function OpsDashboard() {
                 if (effectiveDeptId) queryParams += `&departmentId=${effectiveDeptId}`;
                 // Removed name filter to avoid mismatch issues
 
-                const [resUni, resStd, resApp, resCen, resEmp, resOpsAnn, resHol] = await Promise.all([
+                const [resUni, resStd, resApp, resCen, resEmp, resOpsAnn, resHol, resMarks] = await Promise.all([
                     fetch(`${baseUrl}/university${queryParams}`),
                     fetch(`${baseUrl}/student${queryParams}`),
                     fetch(`${baseUrl}/studentapplicant${queryParams}`),
                     fetch(`${baseUrl}/studycenter${queryParams}`),
                     fetch(`${baseUrl}/employee${queryParams}`),
                     fetch(`${baseUrl}/opsannouncement${queryParams}`),
-                    fetch(`${baseUrl}/holiday?organizationId=${orgId || ''}`)
+                    fetch(`${baseUrl}/holiday?organizationId=${orgId || ''}`),
+                    fetch(`${baseUrl}/internalmark${queryParams}`)
                 ]);
-                const [jsonUni, jsonStd, jsonApp, jsonCen, jsonEmp, jsonOpsAnn, jsonHol] = await Promise.all([
-                    resUni.json(), resStd.json(), resApp.json(), resCen.json(), resEmp.json(), resOpsAnn.json(), resHol.json()
+                const [jsonUni, jsonStd, jsonApp, jsonCen, jsonEmp, jsonOpsAnn, jsonHol, jsonMarks] = await Promise.all([
+                    resUni.json(), resStd.json(), resApp.json(), resCen.json(), resEmp.json(), resOpsAnn.json(), resHol.json(), resMarks.json()
                 ]);
 
                 setCounts({
@@ -90,6 +94,7 @@ export default function OpsDashboard() {
                 setCenters(jsonCen.data || []);
                 setOpsAnnouncements(jsonOpsAnn.data || []);
                 setHolidays(jsonHol.data?.slice(0, 3) || []);
+                setInternalMarks(jsonMarks.data || []);
 
                 // Store all students
                 const allStds = jsonStd.data || [];
@@ -140,9 +145,10 @@ export default function OpsDashboard() {
                 newHref="/student/new"
                 summaryItems={[
                     { label: 'Prospective APPLICATIONS', value: counts.application.toString(), color: 'text-blue-500', doctype: 'studentapplicant' },
-                    { label: 'Center Students', value: centerStudentsCount.toString(), color: 'text-indigo-500', doctype: 'student' },
-                    { label: 'Pending Verifications', value: pendingStudents.length.toString(), color: 'text-rose-500', doctype: 'student' },
+                    { label: 'Active Employees', value: counts.employee.toString(), color: 'text-purple-500', doctype: 'employee' },
+                    { label: 'Study Centers', value: counts.studycenter.toString(), color: 'text-orange-500', doctype: 'studycenter' },
                     { label: 'Total STUDENTS', value: counts.student.toString(), color: 'text-emerald-500', doctype: 'student' },
+                    { label: 'Pending Verifications', value: pendingStudents.length.toString(), color: 'text-rose-500', doctype: 'student' },
                 ]}
                 masterCards={masterCards}
                 shortcuts={shortcuts}
@@ -156,9 +162,14 @@ export default function OpsDashboard() {
                             <UserPlus size={18} className="text-rose-600" />
                             Pending Student Verifications
                         </h3>
-                        <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                            {pendingStudents.length} PENDING
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                Total: {counts.student}
+                            </span>
+                            <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                Pending: {pendingStudents.length}
+                            </span>
+                        </div>
                     </div>
                     <div className="divide-y divide-gray-50 max-h-[300px] overflow-y-auto">
                         {pendingStudents.length === 0 ? (
@@ -188,12 +199,20 @@ export default function OpsDashboard() {
                                                 if (!confirm(`Verify student ${student.studentName}? This will send them to Finance approval.`)) return;
                                                 try {
                                                     const storedOrgId = localStorage.getItem('organization_id');
-                                                    const orgId = (storedOrgId === 'null' || storedOrgId === 'undefined') ? '' : (storedOrgId || '');
+                                                    const orgId = (storedOrgId === 'null' || storedOrgId === 'undefined' || !storedOrgId) ? '' : storedOrgId;
+
+                                                    if (!orgId) {
+                                                        alert('Error: Organization ID is missing. Please log out and log in again.');
+                                                        return;
+                                                    }
 
                                                     const res = await fetch(`/api/resource/student/${student._id}?organizationId=${orgId}`, {
                                                         method: 'PUT',
                                                         headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ verificationStatus: 'Verified by Ops' })
+                                                        body: JSON.stringify({
+                                                            verificationStatus: 'Verified by Ops',
+                                                            organizationId: orgId
+                                                        })
                                                     });
                                                     if (res.ok) window.location.reload();
                                                     else {
@@ -490,6 +509,9 @@ export default function OpsDashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* Internal Marks Section - All Centers */}
+
             </div>
 
             {/* Show features badge for debugging/info */}

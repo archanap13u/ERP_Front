@@ -22,8 +22,12 @@ export default function InternalMarksPage() {
                 const userCenter = localStorage.getItem('study_center_name');
 
                 let query = `?organizationId=${orgId || ''}`;
-                if (deptName) query += `&department=${deptName}`;
-                if (userCenter && userRole !== 'SuperAdmin' && userRole !== 'OrganizationAdmin') {
+                // Only filter by department if NOT Ops/Admin (Ops should see all)
+                if (deptName && !isOps && userRole !== 'OrganizationAdmin' && userRole !== 'SuperAdmin') {
+                    query += `&department=${deptName}`;
+                }
+
+                if (userCenter && userRole !== 'SuperAdmin' && userRole !== 'OrganizationAdmin' && !isOps) {
                     query += `&studyCenter=${userCenter}`;
                 }
 

@@ -277,31 +277,7 @@ export default function Sidebar() {
                     })}
                 </nav>
 
-                {/* Contextual Sub-Panels (Isolated to HR, Ops, and Department Workspaces) */}
-                {departments.length > 0 && role !== 'Employee' && (location.pathname.startsWith('/hr') || location.pathname.startsWith('/ops-dashboard') || location.pathname.includes('/department')) && (
-                    <div className="mt-8 animate-in slide-in-from-left duration-500">
-                        <div className="text-[11px] font-bold text-[#8d99a6] uppercase tracking-wider mb-4 px-3 flex items-center justify-between">
-                            <span>Sub-Panels</span>
-                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-tighter">Workspace</span>
-                        </div>
-                        <nav className="space-y-1">
-                            {departments.map((dept) => {
-                                const href = `/organization/department/${dept._id}`;
-                                const isActive = location.pathname === href;
-                                return (
-                                    <Link
-                                        key={dept._id}
-                                        to={href}
-                                        className={`flex items-center gap-3 px-3 py-2 rounded text-[#1d2129] hover:bg-[#ebedef] transition-colors no-underline ${isActive ? 'bg-white shadow-sm font-bold border-l-2 border-blue-600 pl-[10px]' : 'bg-transparent'}`}
-                                    >
-                                        <Building2 size={16} strokeWidth={isActive ? 2.5 : 2} />
-                                        <span className="text-[13px] truncate">{dept.name}</span>
-                                    </Link>
-                                );
-                            })}
-                        </nav>
-                    </div>
-                )}
+                {/* Contextual Sub-Panels Removed as per request to avoid clutter/leakage */}
             </div>
 
             <div className="p-4 border-t border-[#d1d8dd]">

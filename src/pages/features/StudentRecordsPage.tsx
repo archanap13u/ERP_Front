@@ -293,12 +293,27 @@ export default function StudentRecordsPage() {
                                                             onClick={async () => {
                                                                 if (!confirm('Approve this STUDENT entry?')) return;
                                                                 try {
-                                                                    const res = await fetch(`/api/resource/student/${student._id}`, {
+                                                                    const storedOrgId = localStorage.getItem('organization_id');
+                                                                    const orgId = (storedOrgId === 'null' || storedOrgId === 'undefined' || !storedOrgId) ? '' : storedOrgId;
+
+                                                                    if (!orgId) {
+                                                                        alert('Error: Organization ID is missing. Please log out and log in again.');
+                                                                        return;
+                                                                    }
+
+                                                                    const res = await fetch(`/api/resource/student/${student._id}?organizationId=${orgId}`, {
                                                                         method: 'PUT',
                                                                         headers: { 'Content-Type': 'application/json' },
-                                                                        body: JSON.stringify({ verificationStatus: 'Verified by Ops' })
+                                                                        body: JSON.stringify({
+                                                                            verificationStatus: 'Verified by Ops',
+                                                                            organizationId: orgId
+                                                                        })
                                                                     });
                                                                     if (res.ok) window.location.reload();
+                                                                    else {
+                                                                        const err = await res.json();
+                                                                        alert(`Error: ${err.error || 'Failed to approve student'}`);
+                                                                    }
                                                                 } catch (e) { console.error(e); }
                                                             }}
                                                             className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-black hover:bg-emerald-700 shadow-sm transition-all hover:scale-105 active:scale-95"
