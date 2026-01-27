@@ -130,6 +130,28 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
             payload.departmentId = null;
         }
 
+        if (doctype === 'task') {
+            const userRole = localStorage.getItem('user_role');
+            if (userRole === 'Employee') {
+                if (payload.status === 'Completed') {
+                    payload.status = 'Pending Review';
+                    payload.verificationStatus = 'Pending';
+                }
+                if (payload.status === 'Pending Review' && !payload.completionEvidence) {
+                    alert('Please provide Completion Evidence (URL or Description) before submitting for review.');
+                    setSaving(false);
+                    return;
+                }
+            } else {
+                // Admin/HR/Ops/Finance logic
+                if (payload.verificationStatus === 'Approved') {
+                    payload.status = 'Completed';
+                } else if (payload.verificationStatus === 'Rejected') {
+                    payload.status = 'Working';
+                }
+            }
+        }
+
         try {
             const orgId = payload.organizationId || localStorage.getItem('organization_id');
             const res = await fetch(`/api/resource/${doctype}/${id}?organizationId=${orgId}`, {
@@ -212,8 +234,18 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                         }
 
                         // Conditional visibility for Program fields: hide B.Voc-only fields for Skill programs
-                        if (doctype === 'program' && ['feeStructure', 'miscellaneous'].includes(field.name) && formData.programType !== 'B.Voc') {
-                            return null;
+                        // Specific logic for Tasks completion workflow
+                        if (doctype === 'task') {
+                            const isAdmin = ['DepartmentAdmin', 'HR', 'Operations', 'Finance', 'SuperAdmin', 'OrganizationAdmin'].includes(userRole || '');
+                            const isEmployee = userRole === 'Employee';
+
+                            if (isEmployee && ['verificationStatus', 'adminRemarks'].includes(field.name)) {
+                                field.readOnly = true;
+                            }
+                            if (isAdmin && ['completionEvidence'].includes(field.name)) {
+                                // Admin can see it but maybe shouldn't edit it? 
+                                // Let's keep it editable for now but usually it's employee's input.
+                            }
                         }
 
                         return (
@@ -238,8 +270,22 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                                     <select
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all disabled:opacity-70"
                                         value={formData[field.name] || ''}
-                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                        disabled={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const newData = { ...formData, [field.name]: val };
+
+                                            // Sync Assigned To name for Tasks
+                                            if (doctype === 'task' && field.name === 'assignedTo' && field.link === 'employee') {
+                                                const selectedEmp = (dynamicOptions[field.name] || []).find(
+                                                    (opt: any) => opt.value === val
+                                                );
+                                                if (selectedEmp) {
+                                                    newData.assignedToName = selectedEmp.label;
+                                                }
+                                            }
+                                            setFormData(newData);
+                                        }}
+                                        disabled={(doctype === 'complaint' && localStorage.getItem('user_role') === 'HR') || (field as any).readOnly}
                                     >
                                         <option value="">Select...</option>
                                         {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
@@ -253,7 +299,7 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
                                         value={formData[field.name]?.split('T')[0] || ''}
                                         onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                        readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
+                                        readOnly={(doctype === 'complaint' && localStorage.getItem('user_role') === 'HR') || (field as any).readOnly}
                                     />
                                 ) : field.type === 'textarea' ? (
                                     <textarea
@@ -261,7 +307,7 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                                         value={formData[field.name] || ''}
                                         onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                                         placeholder={field.placeholder || ''}
-                                        readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
+                                        readOnly={(doctype === 'complaint' && localStorage.getItem('user_role') === 'HR') || (field as any).readOnly}
                                     />
                                 ) : (
                                     <input
@@ -270,7 +316,7 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
                                         value={formData[field.name] || ''}
                                         onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                        readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
+                                        readOnly={(doctype === 'complaint' && localStorage.getItem('user_role') === 'HR') || (field as any).readOnly}
                                     />
                                 )}
                             </div>

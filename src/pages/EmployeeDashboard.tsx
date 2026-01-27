@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserCheck, CalendarDays, Megaphone, Clock, GraduationCap, Calendar, Trash2, Plus } from 'lucide-react';
+import { UserCheck, CalendarDays, Megaphone, Clock, GraduationCap, Calendar, Trash2, Plus, ListTodo } from 'lucide-react';
 import PollWidget from '../components/PollWidget';
 
 export default function EmployeeDashboard() {
@@ -8,6 +8,7 @@ export default function EmployeeDashboard() {
     const [announcements, setAnnouncements] = useState<any[]>([]);
     const [holidays, setHolidays] = useState<any[]>([]);
     const [complaints, setComplaints] = useState<any[]>([]);
+    const [tasks, setTasks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Use employee ID if available, otherwise fallback to username for voting checks
@@ -35,6 +36,7 @@ export default function EmployeeDashboard() {
     useEffect(() => {
         const storedName = localStorage.getItem('user_name');
         const storedId = localStorage.getItem('employee_id');
+        const mongoId = localStorage.getItem('user_id');
         setName(storedName || 'Staff Member');
         setEmpId(storedId || '');
 
@@ -71,12 +73,19 @@ export default function EmployeeDashboard() {
                 }
 
 
-                const [resAnn, resHol, resComp] = await Promise.all([
+                let taskPromise: Promise<any> = Promise.resolve({ json: () => Promise.resolve({ data: [] }) });
+                if (mongoId) {
+                    const taskQuery = `${baseQuery}&assignedTo=${mongoId}&_t=${timestamp}`;
+                    taskPromise = fetch(`/api/resource/task${taskQuery}`);
+                }
+
+                const [resAnn, resHol, resComp, resTask] = await Promise.all([
                     fetch(`/api/resource/announcement${annQuery}`),
                     fetch(`/api/resource/holiday${holQuery}`),
-                    compPromise
+                    compPromise,
+                    taskPromise
                 ]);
-                const [jsonAnn, jsonHol, jsonComp] = await Promise.all([resAnn.json(), resHol.json(), resComp.json()]);
+                const [jsonAnn, jsonHol, jsonComp, jsonTask] = await Promise.all([resAnn.json(), resHol.json(), resComp.json(), resTask.json()]);
 
                 // Filter announcements by date
                 const now = new Date();
@@ -104,6 +113,7 @@ export default function EmployeeDashboard() {
                 setAnnouncements(validAnnouncements);
                 setHolidays(jsonHol.data || []);
                 setComplaints(safeComplaints); // Use the filtered list
+                setTasks(jsonTask.data || []);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -221,6 +231,46 @@ export default function EmployeeDashboard() {
 
                 {/* Right Column: Holidays & Complaints */}
                 <div className="space-y-6">
+                    {/* My Assigned Tasks Card */}
+                    <section className="bg-white rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-[#d1d8dd] bg-gradient-to-r from-rose-50/50 to-white flex items-center gap-2">
+                            <ListTodo size={16} className="text-rose-600" />
+                            <h2 className="font-bold text-[14px]">My Assigned Tasks</h2>
+                        </div>
+                        <div className="p-4 space-y-3">
+                            {loading ? (
+                                <div className="animate-pulse space-y-3">
+                                    <div className="h-12 bg-gray-50 rounded-xl"></div>
+                                    <div className="h-12 bg-gray-50 rounded-xl"></div>
+                                </div>
+                            ) : tasks.length === 0 ? (
+                                <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                                    <ListTodo size={24} className="mx-auto text-gray-200 mb-2" />
+                                    <p className="text-gray-400 italic text-[12px]">No tasks assigned to you.</p>
+                                </div>
+                            ) : (
+                                tasks.slice(0, 5).map((task, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50/50 rounded-xl border border-transparent hover:border-rose-100 hover:bg-white transition-all cursor-pointer" onClick={() => window.location.href = `/task/${task._id}`}>
+                                        <div className={`w-2 h-10 rounded-full shrink-0 ${task.priority === 'Urgent' || task.priority === 'High' ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="text-[13px] font-bold text-gray-800 truncate">{task.subject}</h4>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${task.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                                    task.status === 'Working' ? 'bg-blue-100 text-blue-700' :
+                                                        task.status === 'Pending Review' ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-yellow-100 text-yellow-700'
+                                                    }`}>
+                                                    {task.status}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 font-bold">{task.exp_end_date ? new Date(task.exp_end_date).toLocaleDateString() : 'No date'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </section>
+
                     {/* Upcoming Holidays Card */}
                     <section className="bg-white rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b border-[#d1d8dd] bg-gradient-to-r from-orange-50/50 to-white flex items-center gap-2">

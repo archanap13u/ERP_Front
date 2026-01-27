@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, CalendarDays, MapPin, Lock, ExternalLink, ArrowRight, UserPlus, Users, ClipboardList, Edit, Clock, Pin, Plus, Search, Trash2 } from 'lucide-react';
+import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, CalendarDays, MapPin, Lock, ExternalLink, ArrowRight, UserPlus, Users, ClipboardList, Edit, Clock, Pin, Plus, Search, Trash2, ListTodo } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';
@@ -13,7 +13,8 @@ export default function OpsDashboard() {
         student: 0,
         application: 0,
         studycenter: 0,
-        employee: 0
+        employee: 0,
+        task: 0
     });
     const [loading, setLoading] = useState(true);
     const [centers, setCenters] = useState<any[]>([]);
@@ -69,7 +70,7 @@ export default function OpsDashboard() {
                 if (effectiveDeptId) queryParams += `&departmentId=${effectiveDeptId}`;
                 // Removed name filter to avoid mismatch issues
 
-                const [resUni, resStd, resApp, resCen, resEmp, resOpsAnn, resHol, resMarks] = await Promise.all([
+                const [resUni, resStd, resApp, resCen, resEmp, resOpsAnn, resHol, resMarks, resTask] = await Promise.all([
                     fetch(`${baseUrl}/university${queryParams}`),
                     fetch(`${baseUrl}/student${queryParams}`),
                     fetch(`${baseUrl}/studentapplicant${queryParams}`),
@@ -77,10 +78,11 @@ export default function OpsDashboard() {
                     fetch(`${baseUrl}/employee${queryParams}`),
                     fetch(`${baseUrl}/opsannouncement${queryParams}`),
                     fetch(`${baseUrl}/holiday?organizationId=${orgId || ''}`),
-                    fetch(`${baseUrl}/internalmark${queryParams}`)
+                    fetch(`${baseUrl}/internalmark${queryParams}`),
+                    fetch(`${baseUrl}/task${queryParams}`)
                 ]);
-                const [jsonUni, jsonStd, jsonApp, jsonCen, jsonEmp, jsonOpsAnn, jsonHol, jsonMarks] = await Promise.all([
-                    resUni.json(), resStd.json(), resApp.json(), resCen.json(), resEmp.json(), resOpsAnn.json(), resHol.json(), resMarks.json()
+                const [jsonUni, jsonStd, jsonApp, jsonCen, jsonEmp, jsonOpsAnn, jsonHol, jsonMarks, jsonTask] = await Promise.all([
+                    resUni.json(), resStd.json(), resApp.json(), resCen.json(), resEmp.json(), resOpsAnn.json(), resHol.json(), resMarks.json(), resTask.json()
                 ]);
 
                 setCounts({
@@ -88,7 +90,9 @@ export default function OpsDashboard() {
                     student: jsonStd.data?.length || 0,
                     application: jsonApp.data?.length || 0,
                     studycenter: jsonCen.data?.length || 0,
-                    employee: jsonEmp.data?.length || 0
+                    employee: jsonEmp.data?.length || 0,
+                    task: jsonTask.data?.length || 0,
+                    pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length
                 });
                 setEmployees(jsonEmp.data || []);
                 setCenters(jsonCen.data || []);
@@ -132,7 +136,8 @@ export default function OpsDashboard() {
         { label: 'Add University', href: '/university/new', feature: 'University' },
         { label: 'Add Program', href: '/program/new', feature: 'Programs' },
         { label: 'Add Study Center', href: '/studycenter/new', feature: 'Study Center' },
-        { label: 'Post Ops Announcement', href: `/opsannouncement/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}`, feature: 'Announcements' },
+        { label: 'Post Announcement', href: `/opsannouncement/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}`, feature: 'Announcements' },
+        { label: 'Assign Task', href: `/task/new?departmentId=${contextData.id}&department=${encodeURIComponent(contextData.name || '')}`, feature: 'Tasks' },
         { label: 'Login Portal URL', href: '/login', feature: 'Study Center' },
     ];
 
@@ -147,7 +152,9 @@ export default function OpsDashboard() {
                 summaryItems={[
                     { label: 'Prospective APPLICATIONS', value: counts.application.toString(), color: 'text-blue-500', doctype: 'studentapplicant' },
                     { label: 'Active Employees', value: counts.employee.toString(), color: 'text-purple-500', doctype: 'employee' },
-                    { label: 'Study Centers', value: counts.studycenter.toString(), color: 'text-orange-500', doctype: 'studycenter' },
+                    { label: 'Study Centers', value: loading ? '...' : counts.studycenter || 0, color: 'text-orange-600', doctype: 'studycenter' },
+                    { label: 'Universities', value: loading ? '...' : counts.university || 0, color: 'text-indigo-600', doctype: 'university' },
+                    { label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' },
                     { label: 'Total STUDENTS', value: counts.student.toString(), color: 'text-emerald-500', doctype: 'student' },
                     { label: 'Pending Verifications', value: pendingStudents.length.toString(), color: 'text-rose-500', doctype: 'student' },
                 ]}

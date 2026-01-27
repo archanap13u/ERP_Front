@@ -2,11 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Workspace from '../components/Workspace';
-import { Activity, Shield, Users, FileText, BadgeDollarSign, Receipt, School, BookOpen, UserCheck, CalendarDays, Megaphone, GraduationCap, Building2, ClipboardList, ArrowRight, Edit, Clock, ArrowLeftRight, TrendingUp } from 'lucide-react';
+import { Activity, Shield, Users, FileText, BadgeDollarSign, Receipt, School, BookOpen, UserCheck, CalendarDays, Megaphone, GraduationCap, Building2, ClipboardList, ArrowRight, Edit, Clock, ArrowLeftRight, TrendingUp, CheckCircle2, ListTodo, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';
 import DepartmentStudentManager from '../components/DepartmentStudentManager';
 import ApplicationPanel from '../components/ApplicationPanel';
+import DepartmentModal from '../components/DepartmentModal';
+import { useNavigate } from 'react-router-dom';
 
 export default function DepartmentPanel() {
     const { id } = useParams();
@@ -14,7 +16,10 @@ export default function DepartmentPanel() {
     const [counts, setCounts] = useState<{ [key: string]: number }>({});
     const [loading, setLoading] = useState(true);
     const [employees, setEmployees] = useState<any[]>([]);
+    const [tasks, setTasks] = useState<any[]>([]);
     const [employeeSearch, setEmployeeSearch] = useState('');
+    const [showCustomizer, setShowCustomizer] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!id) return;
@@ -27,17 +32,22 @@ export default function DepartmentPanel() {
 
                 // Fetch real counts for this department
                 const query = `?organizationId=${orgId}&departmentId=${id}`;
-                const [resEmp, resAtt] = await Promise.all([
+                const [resEmp, resAtt, resTask] = await Promise.all([
                     fetch(`/api/resource/employee${query}`),
-                    fetch(`/api/resource/attendance${query}`)
+                    fetch(`/api/resource/attendance${query}`),
+                    fetch(`/api/resource/task${query}`)
                 ]);
-                const [jsonEmp, jsonAtt] = await Promise.all([resEmp.json(), resAtt.json()]);
+                const [jsonEmp, jsonAtt, jsonTask] = await Promise.all([resEmp.json(), resAtt.json(), resTask.json()]);
 
                 setEmployees(jsonEmp.data || []);
+                setTasks(jsonTask.data || []);
 
+                const pendingReview = (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length;
                 setCounts({
                     employee: jsonEmp.data?.length || 0,
-                    attendance: jsonAtt.data?.length || 0
+                    attendance: jsonAtt.data?.length || 0,
+                    task: (jsonTask.data || []).filter((t: any) => t.status !== 'Completed').length || 0,
+                    pendingReview: pendingReview
                 });
             } catch (e) {
                 console.error(e);
@@ -47,6 +57,24 @@ export default function DepartmentPanel() {
         }
         fetchDept();
     }, [id]);
+
+    const handleSaveCustomization = async (updatedData: any) => {
+        try {
+            const orgId = localStorage.getItem('organization_id');
+            const res = await fetch(`/api/resource/department/${id}?organizationId=${orgId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData)
+            });
+            if (res.ok) {
+                const json = await res.json();
+                setDept(json.data);
+                setShowCustomizer(false);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     if (loading) return <div className="p-8 text-center text-gray-400">Loading workspace...</div>;
     if (!dept) return <div className="p-8 text-center text-red-500">Workspace not found.</div>;
@@ -116,6 +144,10 @@ export default function DepartmentPanel() {
             shortcuts.push({ label: 'Add Holiday', href: `/holiday/new?departmentId=${id}&department=${encodeURIComponent(dept.name)}` });
         }
     }
+    if (hasFeature('Tasks')) {
+        summaryItems.push({ label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' });
+    }
+
     if (hasFeature('Announcements')) {
         masterCards.push({ label: 'Announcements', count: '', icon: Megaphone, href: '/announcement', color: 'bg-blue-50 text-blue-600' });
         shortcuts.push({ label: 'Post Announcement', href: '/announcement/new' });
@@ -223,11 +255,16 @@ export default function DepartmentPanel() {
     if (hasFeature('Customers')) masterCards.push({ label: 'Customers', count: '', icon: Users, href: '/customer', color: 'bg-sky-50 text-sky-600' });
     if (hasFeature('Touchpoints')) shortcuts.push({ label: 'Log Touchpoint', href: '/touchpoint' });
 
-    // Projects
+    // Projects & Management
+    const showTasks = hasFeature('Tasks') || ['HR', 'Operations', 'Finance', 'Projects', 'Custom'].includes(dept.panelType);
     if (hasFeature('Projects')) {
         masterCards.push({ label: 'Projects', count: '', icon: FileText, href: '/project', color: 'bg-pink-50 text-pink-600' });
     }
-    if (hasFeature('Tasks')) shortcuts.push({ label: 'Create Task', href: '/task/new' });
+    if (showTasks) {
+        masterCards.push({ label: 'Tasks', count: '', icon: ListTodo, href: '/task', color: 'bg-rose-50 text-rose-600' });
+        shortcuts.push({ label: 'Assign Task', href: `/task/new?departmentId=${id}&department=${encodeURIComponent(dept.name)}` });
+        summaryItems.push({ label: 'Pending Tasks', value: loading ? '...' : (counts.task || 0), color: 'text-rose-600', doctype: 'task' });
+    }
     if (hasFeature('Timesheets')) masterCards.push({ label: 'Timesheets', count: '', icon: CalendarDays, href: '/timesheet', color: 'bg-rose-50 text-rose-600' });
     if (hasFeature('Agile Board')) shortcuts.push({ label: 'Go to Board', href: '/agile-board' });
 
@@ -274,6 +311,15 @@ export default function DepartmentPanel() {
                 summaryItems={summaryItems}
                 masterCards={masterCards}
                 shortcuts={shortcuts}
+                onCustomize={() => setShowCustomizer(true)}
+            />
+
+            <DepartmentModal
+                isOpen={showCustomizer}
+                onClose={() => setShowCustomizer(false)}
+                onSave={handleSaveCustomization}
+                initialData={dept}
+                title={`Customize ${dept.name} Workspace`}
             />
 
             <div className="max-w-6xl mx-auto px-4">
@@ -318,6 +364,93 @@ export default function DepartmentPanel() {
                                 organizationId={localStorage.getItem('organization_id') || undefined}
                                 departmentId={id}
                             />
+                        </div>
+                    </div>
+                )}
+
+                {/* Task Management Section */}
+                {showTasks && (
+                    <div className="space-y-8 mb-8">
+                        <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                                <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center shadow-sm">
+                                        <ListTodo size={20} />
+                                    </div>
+                                    Task Management
+                                </h3>
+                                <div className="flex items-center gap-4">
+                                    <Link to="/task" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
+                                        View All Tasks <ArrowRight size={14} />
+                                    </Link>
+                                    <Link
+                                        to={`/task/new?departmentId=${id}&department=${encodeURIComponent(dept.name)}`}
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[13px] font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                    >
+                                        <Plus size={16} />
+                                        Assign New Task
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                            <th className="px-4 py-3">Task Details</th>
+                                            <th className="px-4 py-3">Assigned To</th>
+                                            <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3">Priority</th>
+                                            <th className="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {tasks.slice(0, 10).map((task, idx) => (
+                                            <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                                <td className="px-4 py-3">
+                                                    <div>
+                                                        <p className="text-[13px] font-bold text-gray-700">{task.subject}</p>
+                                                        <p className="text-[11px] text-gray-500 line-clamp-1">{task.description || 'No description'}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-500">
+                                                            {task.assignedToName?.charAt(0) || '?'}
+                                                        </div>
+                                                        <span className="text-[12px] text-gray-600">{task.assignedToName || 'Unassigned'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${task.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                        task.status === 'Working' || task.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                            task.status === 'Pending Review' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                                                task.status === 'Overdue' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                                    'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                                        }`}>
+                                                        {task.status || 'Open'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`text-[11px] font-bold ${task.priority === 'High' || task.priority === 'Urgent' ? 'text-red-600' : 'text-gray-500'}`}>
+                                                        {task.priority}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Link to={`/task/${task._id}/edit`} className="text-gray-400 hover:text-blue-600 transition-colors">
+                                                        <Edit size={14} />
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {tasks.length === 0 && (
+                                    <div className="py-12 text-center text-gray-400 italic text-[14px]">
+                                        No tasks assigned in this department.
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

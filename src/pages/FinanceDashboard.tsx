@@ -14,7 +14,8 @@ import {
     GraduationCap,
     Eye,
     Edit,
-    Clock
+    Clock,
+    ListTodo
 } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
@@ -60,22 +61,25 @@ export default function FinanceDashboard() {
                     queryParams += `&departmentId=${deptId || contextData.id}`;
                 }
 
-                const [resInv, resPay, resExp, resLead] = await Promise.all([
+                const [resInv, resPay, resExp, resLead, resTask] = await Promise.all([
                     fetch(`${baseUrl}/salesinvoice${queryParams}`),
                     fetch(`${baseUrl}/paymententry${queryParams}`),
                     fetch(`${baseUrl}/expenseclaim${queryParams}`),
-                    fetch(`${baseUrl}/lead${queryParams}`)
+                    fetch(`${baseUrl}/lead${queryParams}`),
+                    fetch(`${baseUrl}/task${queryParams}`)
                 ]);
 
-                const [jsonInv, jsonPay, jsonExp, jsonLead] = await Promise.all([
-                    resInv.json(), resPay.json(), resExp.json(), resLead.json()
+                const [jsonInv, jsonPay, jsonExp, jsonLead, jsonTask] = await Promise.all([
+                    resInv.json(), resPay.json(), resExp.json(), resLead.json(), resTask.json()
                 ]);
 
                 setCounts({
                     invoice: jsonInv.data?.length || 0,
                     payment: jsonPay.data?.length || 0,
                     expense: jsonExp.data?.length || 0,
-                    lead: jsonLead.data?.length || 0
+                    lead: jsonLead.data?.length || 0,
+                    task: jsonTask.data?.length || 0,
+                    pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length
                 });
 
                 setInvoices((jsonInv.data || []).slice(0, 5)); // Recent 5
@@ -106,19 +110,22 @@ export default function FinanceDashboard() {
                 newHref={`/salesinvoice/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}`}
                 summaryItems={[
                     { label: 'Total STUDENTS', value: '', color: 'text-blue-500', doctype: 'student' },
-                    { label: 'Received Payments', value: '', color: 'text-emerald-500', doctype: 'paymententry' },
-                    { label: 'Expense Claims', value: '', color: 'text-red-500', doctype: 'expenseclaim' },
+                    { label: 'Received Payments', value: loading ? '...' : counts.payment || 0, color: 'text-emerald-500', doctype: 'paymententry' },
+                    { label: 'Expense Claims', value: loading ? '...' : counts.expense || 0, color: 'text-red-500', doctype: 'expenseclaim' },
+                    { label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' },
                 ]}
                 masterCards={[
                     { label: 'STUDENT Fees', icon: GraduationCap, count: '', href: '/finance-students' },
                     { label: 'Payments', icon: CreditCard, count: '', href: '/paymententry' },
                     { label: 'Expenses', icon: Receipt, count: '', href: '/expenseclaim' },
+                    { label: 'Tasks', icon: ListTodo, count: '', href: '/task', color: 'bg-rose-50 text-rose-600' },
                     { label: 'General Ledger', icon: BookOpen, count: '', href: '#' },
                 ]}
                 shortcuts={[
                     { label: 'Create Invoice', href: `/salesinvoice/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                     { label: 'Record Payment', href: `/paymententry/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                     { label: 'New Expense Claim', href: `/expenseclaim/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
+                    { label: 'Assign Task', href: `/task/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                     { label: 'Post Announcement', href: `/announcement/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                 ]}
             />

@@ -48,7 +48,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             const updated = { ...prev };
             if (orgId) updated.organizationId = orgId;
 
-            const isDepartmental = ['complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark'].includes(doctype || '');
+            const isDepartmental = ['complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark', 'task'].includes(doctype || '');
 
             if (isDepartmental) {
                 if (storedDeptId) updated.departmentId = storedDeptId;
@@ -344,6 +344,29 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             }
         }
 
+        if (doctype === 'task') {
+            const myEmpId = localStorage.getItem('employee_id');
+            const myName = localStorage.getItem('user_name');
+            if (myEmpId) currentData.assignedBy = myEmpId;
+            if (myName) currentData.assignedByName = myName;
+
+            const userRole = localStorage.getItem('user_role');
+            if (userRole === 'Employee') {
+                if (currentData.status === 'Completed') {
+                    currentData.status = 'Pending Review';
+                    currentData.verificationStatus = 'Pending';
+                }
+                if (currentData.status === 'Pending Review' && !currentData.completionEvidence) {
+                    alert('Please provide Completion Evidence (URL or Description) before submitting for review.');
+                    return;
+                }
+            } else {
+                if (currentData.verificationStatus === 'Approved') {
+                    currentData.status = 'Completed';
+                }
+            }
+        }
+
 
         // Validation against the enriched currentData
         const requiredFields = fields.filter(f => f.required);
@@ -386,7 +409,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             console.log('--------------------------------');
         }
         try {
-            const res = await fetch(`/api/resource/${doctype}?organizationId=${payload.organizationId}`, {
+            const res = await fetch(`/api/resource/${doctype}?organizationId=${currentData.organizationId || ''}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -517,6 +540,16 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             // For others, keep it visible. Pre-filling should set the value, but they can see it.
                         }
 
+                        // Specific logic for Tasks completion workflow
+                        if (doctype === 'task') {
+                            const isAdmin = ['DepartmentAdmin', 'HR', 'Operations', 'Finance', 'SuperAdmin', 'OrganizationAdmin'].includes(userRole || '');
+                            const isEmployee = userRole === 'Employee';
+
+                            if (isEmployee && ['verificationStatus', 'adminRemarks'].includes(field.name)) {
+                                (field as any).readOnly = true;
+                            }
+                        }
+
                         // Hide Target Study Center for HR announcements
                         if (doctype === 'announcement' && field.name === 'targetStudyCenter' && formData.department === 'Human Resources') {
                             return null;
@@ -579,8 +612,9 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
 
                                 {field.type === 'select' ? (
                                     <select
-                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all disabled:opacity-70"
                                         value={formData[field.name] || ''}
+                                        disabled={(field as any).readOnly}
                                         onChange={(e) => {
                                             const val = e.target.value;
                                             setFormData((prev: any) => {
@@ -634,6 +668,16 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                                     }
                                                 }
 
+                                                // Sync Assigned To name for Tasks
+                                                if (doctype === 'task' && field.name === 'assignedTo' && field.link === 'employee') {
+                                                    const selectedEmp = (dynamicOptions[field.name] || []).find(
+                                                        opt => opt.value === val
+                                                    );
+                                                    if (selectedEmp) {
+                                                        newData.assignedToName = selectedEmp.label;
+                                                    }
+                                                }
+
                                                 return newData;
                                             });
                                         }}
@@ -656,22 +700,18 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                     </select>
                                 ) : field.type === 'date' || field.type === 'datetime-local' ? (
                                     <input
-                                        type={field.type}
-                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
-                                        value={formData[field.name] || ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setFormData((prev: any) => ({ ...prev, [field.name]: val }));
-                                        }}
+                                        type={field.type === 'date' ? 'date' : (field.type || 'text')}
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
+                                        value={field.type === 'date' ? (formData[field.name]?.split('T')[0] || '') : (formData[field.name] || '')}
+                                        readOnly={(field as any).readOnly}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, [field.name]: e.target.value }))}
                                     />
                                 ) : field.type === 'textarea' ? (
                                     <textarea
-                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all min-h-[100px]"
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all min-h-[100px] read-only:opacity-70"
                                         value={formData[field.name] || ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            setFormData((prev: any) => ({ ...prev, [field.name]: val }));
-                                        }}
+                                        readOnly={(field as any).readOnly}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, [field.name]: e.target.value }))}
                                     />
                                 ) : field.type === 'checkbox' ? (
                                     <div className="flex items-center h-[34px]">
@@ -687,11 +727,11 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                     </div>
                                 ) : (
                                     <input
-                                        type={field.type}
+                                        type={field.type || 'text'}
                                         placeholder={field.placeholder || ''}
-                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
                                         value={formData[field.name] || ''}
-                                        readOnly={doctype === 'complaint' && field.name === 'employeeName'}
+                                        readOnly={(field as any).readOnly}
                                         onChange={(e) => {
                                             const val = e.target.value;
                                             setFormData((prev: any) => ({ ...prev, [field.name]: val }));

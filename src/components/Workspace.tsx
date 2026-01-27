@@ -15,6 +15,7 @@ interface MasterCard {
     icon: LucideIcon;
     count: string | number;
     href: string;
+    color?: string; // e.g., 'bg-blue-50 text-blue-600'
 }
 
 interface WorkspaceProps {
@@ -85,7 +86,7 @@ export default function Workspace({ title, summaryItems, masterCards, shortcuts,
                     {masterCards.map((card, i) => (
                         <Link key={i} to={card.href} className="frappe-card p-4 flex items-center justify-between group cursor-pointer hover:bg-gray-50 bg-white no-underline">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-gray-100 rounded text-gray-500 group-hover:text-blue-600 group-hover:bg-blue-50 transition-colors">
+                                <div className={`p-2 rounded transition-colors ${card.color || 'bg-gray-100 text-gray-500 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>
                                     <card.icon size={20} />
                                 </div>
                                 <div>

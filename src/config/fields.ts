@@ -163,5 +163,19 @@ export const fieldRegistry: { [key: string]: any[] } = {
         { name: 'description', label: 'Description', type: 'textarea' },
         { name: 'department', label: 'Target Department (Leave blank for Global/All)', type: 'text' },
         { name: 'departmentId', label: 'Department ID', type: 'hidden' }
+    ],
+    task: [
+        { name: 'subject', label: 'Task Subject', type: 'text', required: true },
+        { name: 'description', label: 'Description', type: 'textarea' },
+        { name: 'assignedTo', label: 'Assign To', type: 'select', link: 'employee', required: true },
+        { name: 'assignedToName', label: 'Assignee Name', type: 'hidden' },
+        { name: 'exp_end_date', label: 'Expected End Date', type: 'date' },
+        { name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High', 'Urgent'], default: 'Medium' },
+        { name: 'status', label: 'Status', type: 'select', options: ['Open', 'Working', 'Pending Review', 'Completed', 'Cancelled', 'Overdue'], default: 'Open' },
+        { name: 'completionEvidence', label: 'Completion Evidence (URL or Description)', type: 'textarea' },
+        { name: 'verificationStatus', label: 'Admin Verification', type: 'select', options: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+        { name: 'adminRemarks', label: 'Admin Remarks', type: 'textarea' },
+        { name: 'departmentId', label: 'Department ID', type: 'hidden' },
+        { name: 'department', label: 'Department', type: 'hidden' }
     ]
 };

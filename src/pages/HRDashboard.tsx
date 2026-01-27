@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, UserCheck, CalendarDays, Megaphone, TrendingUp, Plus, Clock, ArrowLeftRight, Building2, Vote, CheckCircle2, ArrowRight, Edit, Trash2 } from 'lucide-react';
+import { Users, UserCheck, CalendarDays, Megaphone, TrendingUp, Plus, Clock, ArrowLeftRight, Building2, Vote, CheckCircle2, ArrowRight, Edit, Trash2, ListTodo } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Workspace from '../components/Workspace';
 import CustomizationModal from '../components/CustomizationModal';
@@ -64,7 +64,8 @@ export default function HRDashboard() {
                     fetch(`${baseUrl}/holiday${globalParams}`).then(r => r.json()),
                     fetch(`${baseUrl}/announcement${globalParams}${effectiveDeptId ? `&departmentId=${effectiveDeptId}` : ''}`).then(r => r.json()),
                     // Explicitly fetch ALL complaints for the organization, ignoring department context params
-                    fetch(`${baseUrl}/complaint?organizationId=${orgId}&view=all`).then(r => r.json())
+                    fetch(`${baseUrl}/complaint?organizationId=${orgId}&view=all`).then(r => r.json()),
+                    fetch(`${baseUrl}/task${deptParams}`).then(r => r.json())
                 ];
 
                 // Also fetch features live if we have a dept context
@@ -84,12 +85,15 @@ export default function HRDashboard() {
                 setEmployees((jsonEmp.data || []).sort((a: any, b: any) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 ));
+                const jsonTask = results[5];
                 setCounts({
                     employee: jsonEmp.data?.length || 0,
                     attendance: jsonAtt.data?.length || 0,
                     holiday: jsonHol.data?.length || 0,
                     announcement: jsonAnn.data?.length || 0,
-                    complaint: jsonComp.data?.length || 0
+                    complaint: jsonComp.data?.length || 0,
+                    task: jsonTask.data?.length || 0,
+                    pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length
                 });
 
                 setHolidays(jsonHol.data?.slice(0, 3) || []);
@@ -156,14 +160,15 @@ export default function HRDashboard() {
                 newLabel="Add Employee"
                 onCustomize={() => setIsCustomizing(true)}
                 summaryItems={[
-                    { label: 'Active Staff', value: '', color: 'text-indigo-600', doctype: 'employee' },
-                    { label: "Today's Presence", value: '', color: 'text-emerald-600', doctype: 'attendance' },
-                    { label: 'Pending Reviews', value: '', color: 'text-orange-600', doctype: 'performancereview' },
+                    { label: 'Active Staff', value: loading ? '...' : counts.employee || 0, color: 'text-indigo-600', doctype: 'employee' },
+                    { label: "Today's Presence", value: loading ? '...' : counts.attendance || 0, color: 'text-emerald-600', doctype: 'attendance' },
+                    { label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' },
                 ]}
                 masterCards={[
                     { label: 'Post Vacancy', icon: Building2, count: '', href: '/jobopening', feature: 'Post Vacancy' },
-                    { label: 'Employee Transfer', icon: ArrowLeftRight, count: '', href: '/employee-transfer', feature: 'Employee Transfer' },
-                    { label: 'Performance', icon: TrendingUp, count: '', href: '/performancereview' }, // Always show or add feature check if needed
+                    { label: 'Employee Transfer', icon: ArrowLeftRight, count: '', href: '/employee-transfer', feature: 'Employee Transfer', color: 'bg-blue-50 text-blue-600' },
+                    { label: 'Performance', icon: TrendingUp, count: '', href: '/performancereview', color: 'bg-indigo-50 text-indigo-600' },
+                    { label: 'Tasks', icon: ListTodo, count: '', href: '/task', color: 'bg-rose-50 text-rose-600' },
                 ].filter(card => !card.feature || features.includes(card.feature))}
                 shortcuts={[
                     { label: 'Mark Attendance', href: '/attendance/new' },
@@ -172,6 +177,7 @@ export default function HRDashboard() {
                     { label: "My Panel's Staff", href: `/employee?departmentId=${contextData.id || ''}` },
                     { label: "All Employees", href: '/employee' },
                     { label: "My Staff Portal", href: '/employee-dashboard' }, // Added for easy access to personal complaints
+                    { label: 'Assign Task', href: `/task/new?departmentId=${contextData.id}&department=${encodeURIComponent(contextData.name || '')}` },
                 ]}
             />
 

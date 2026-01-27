@@ -29,7 +29,7 @@ const MODULES = [
         features: [
             'Add Employee', 'Employee List', 'Post Vacancy', 'Job Application', 'Employee Transfer',
             'Attendance', 'Recruitment', 'Payroll', 'Employee Lifecycle', 'Shift Management', 'Holidays', 'Announcements',
-            'Employee Complaints', 'Performance'
+            'Employee Complaints', 'Performance', 'Tasks'
         ],
         color: 'text-purple-600',
         bg: 'bg-purple-50',
@@ -38,7 +38,7 @@ const MODULES = [
     {
         id: 'Finance',
         name: 'Finance & Accounts',
-        features: ['Invoices', 'Payments', 'Expenses', 'General Ledger', 'Taxation', 'Announcements', 'Employee List', 'STUDENTS'],
+        features: ['Invoices', 'Payments', 'Expenses', 'General Ledger', 'Taxation', 'Announcements', 'Employee List', 'STUDENTS', 'Tasks'],
         color: 'text-emerald-600',
         bg: 'bg-emerald-50',
         border: 'border-emerald-100'
@@ -46,7 +46,7 @@ const MODULES = [
     {
         id: 'Operations',
         name: 'Education Ops',
-        features: ['University', 'Study Center', 'APPLICATIONS', 'Programs', 'Internal Marks', 'Employee List', 'Announcements'],
+        features: ['University', 'Study Center', 'APPLICATIONS', 'Programs', 'Internal Marks', 'Employee List', 'Announcements', 'Tasks'],
         color: 'text-orange-600',
         bg: 'bg-orange-50',
         border: 'border-orange-100'
@@ -54,7 +54,7 @@ const MODULES = [
     {
         id: 'Inventory',
         name: 'Inventory & Stock',
-        features: ['Stock Entry', 'Delivery Note', 'Item Management', 'Purchase Receipt', 'Warehouses', 'Suppliers', 'Announcements', 'Employee List'],
+        features: ['Stock Entry', 'Delivery Note', 'Item Management', 'Purchase Receipt', 'Warehouses', 'Suppliers', 'Announcements', 'Employee List', 'Tasks'],
         color: 'text-amber-600',
         bg: 'bg-amber-50',
         border: 'border-amber-100'
@@ -62,7 +62,7 @@ const MODULES = [
     {
         id: 'CRM',
         name: 'CRM & Sales',
-        features: ['Leads', 'Deals', 'Customers', 'Touchpoints', 'Quotations', 'Sales Orders', 'Announcements', 'Employee List'],
+        features: ['Leads', 'Deals', 'Customers', 'Touchpoints', 'Quotations', 'Sales Orders', 'Announcements', 'Employee List', 'Tasks'],
         color: 'text-blue-600',
         bg: 'bg-blue-50',
         border: 'border-blue-100'
@@ -78,7 +78,7 @@ const MODULES = [
     {
         id: 'Support',
         name: 'Helpdesk',
-        features: ['Tickets', 'Issues', 'Warranty Claims', 'Knowledge Base', 'Announcements', 'Employee List'],
+        features: ['Tickets', 'Issues', 'Warranty Claims', 'Knowledge Base', 'Announcements', 'Employee List', 'Tasks'],
         color: 'text-cyan-600',
         bg: 'bg-cyan-50',
         border: 'border-cyan-100'
@@ -86,7 +86,7 @@ const MODULES = [
     {
         id: 'Assets',
         name: 'Asset Mgmt',
-        features: ['Asset Tracking', 'Maintenance', 'Depreciation', 'Announcements', 'Employee List'],
+        features: ['Asset Tracking', 'Maintenance', 'Depreciation', 'Announcements', 'Employee List', 'Tasks'],
         color: 'text-slate-600',
         bg: 'bg-slate-50',
         border: 'border-slate-100'

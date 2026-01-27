@@ -25,7 +25,8 @@ import {
     Bell,
     ClipboardList,
     Clock,
-    Award
+    Award,
+    ListTodo
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -115,6 +116,7 @@ export default function Sidebar() {
         { icon: LayoutDashboard, label: 'Center Dashboard', href: '/center-dashboard', roles: ['StudyCenter'] },
         { icon: Settings, label: 'Customize Departments', href: '/organization/departments', roles: ['OrganizationAdmin'] },
         { icon: LayoutDashboard, label: 'Department Panel', href: `/department/${deptId}`, roles: ['DepartmentAdmin'] },
+        { icon: ListTodo, label: 'Task Management', href: '/task', roles: ['DepartmentAdmin', 'HR', 'Operations', 'Finance'] },
 
         // HR & Employee Management
         { icon: Users, label: 'HR Workspace', href: '/hr', roles: ['HR'], feature: 'HR Dashboard' },
@@ -163,7 +165,7 @@ export default function Sidebar() {
 
         // Projects
         { icon: FileText, label: 'Projects', href: '/project', roles: ['Projects'], feature: 'Projects' },
-        { icon: ClipboardList, label: 'Tasks', href: '/task', roles: ['Projects'], feature: 'Tasks' },
+        { icon: ClipboardList, label: 'Tasks', href: '/task', roles: ['Projects', 'HR', 'Operations', 'Finance', 'DepartmentAdmin', 'Employee'], feature: 'Tasks' },
         { icon: CalendarDays, label: 'Timesheets', href: '/timesheet', roles: ['Projects'], feature: 'Timesheets' },
 
         // Support
@@ -228,7 +230,7 @@ export default function Sidebar() {
         // --- STRICT STAFF ISOLATION ---
         // If the user is a standard Employee, they MUST ONLY see their Portal and Notifications.
         if (role === 'Employee') {
-            const staffWhitelist = ['Staff Portal', 'Notifications'];
+            const staffWhitelist = ['Staff Portal', 'Notifications', 'Tasks'];
             return staffWhitelist.includes(item.label) && roleAllowed;
         }
 
