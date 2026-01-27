@@ -122,13 +122,12 @@ export default function Sidebar() {
         { icon: UserCheck, label: 'Add Employee', href: '/employee/new', roles: ['HR'], feature: 'Add Employee' },
         { icon: Building2, label: 'Post Vacancy', href: '/jobopening', roles: ['HR'], feature: 'Post Vacancy' },
         { icon: ArrowLeftRight, label: 'Employee Transfer', href: '/employee-transfer', roles: ['HR'], feature: 'Employee Transfer' },
-        { icon: UserCheck, label: 'Recruitment', href: '/jobopening', roles: ['HR'], feature: 'Recruitment' },
         { icon: Users, label: 'Employee Lifecycle', href: '/employee-lifecycle', roles: ['HR'], feature: 'Employee Lifecycle' },
 
         { icon: GraduationCap, label: 'STUDENTS', href: (role === 'Finance' || panelType === 'Finance' || role?.includes('Admin')) ? '/finance-students' : '/student', roles: ['HR', 'Operations', 'StudyCenter', 'Finance', 'SuperAdmin'], feature: 'STUDENTS' },
         { icon: Megaphone, label: 'Complaints', href: '/complaint', roles: ['HR'], feature: 'Employee Complaints' },
         { icon: School, label: 'Holidays', href: '/holiday', roles: ['HR', 'Operations'], feature: 'Holidays' },
-        { icon: Megaphone, label: 'Announcements', href: '/announcement', roles: ['HR'], feature: 'Announcements' },
+        { icon: Megaphone, label: 'Notice Board', href: '/announcement', roles: ['HR', 'Student'], feature: 'Announcements' },
         { icon: TrendingUp, label: 'Performance', href: '/performancereview', roles: ['HR'], feature: 'Performance' },
         { icon: CalendarDays, label: 'Attendance', href: '/attendance', roles: ['HR', 'Employee'], feature: 'Attendance' },
 
@@ -175,7 +174,7 @@ export default function Sidebar() {
         { icon: BadgeDollarSign, label: 'Assets', href: '/asset', roles: ['Assets'], feature: 'Asset Tracking' },
 
         // Shared
-        { icon: Bell, label: 'Notifications', href: '/notifications', roles: ['Employee', 'DepartmentAdmin', 'HR', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets', 'StudyCenter', 'OrganizationAdmin'] },
+        { icon: Bell, label: 'Notifications', href: '/notifications', roles: ['Employee', 'DepartmentAdmin', 'HR', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets', 'StudyCenter', 'OrganizationAdmin', 'Student'] },
     ];
 
     // Total hard sandbox for employees

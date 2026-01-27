@@ -147,7 +147,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                 return { label: label, value: name, id: item._id };
                             }
 
-                            const nameVal = item.centerName || item.universityName || item.programName || item.name || item.title;
+                            const nameVal = item.universityName || item.centerName || item.programName || item.itemName || item.item_name || item.applicantName || item.leadName || item.customerName || item.supplierName || item.projectName || item.fullName || item.name || item.title;
 
                             return {
                                 label: nameVal || item.employeeName || item.studentName || item.job_title || item._id,
@@ -456,7 +456,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             </span>
                         </div>
                         <h2 className="text-[20px] font-bold flex items-center gap-2">
-                            Untitled
+                            New {displayTitle}
                             {formData.department && (
                                 <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-tighter whitespace-nowrap">
                                     {formData.department}
@@ -500,10 +500,13 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             return null;
                         }
 
-                        // Conditional visibility for Program B.Voc fields
-                        if (doctype === 'program' && ['feeStructure', 'syllabus', 'miscellaneous'].includes(field.name) && formData.programType !== 'B.Voc') {
+                        // Conditional visibility for Program fields: hide B.Voc-only fields for Skill programs
+                        if (doctype === 'program' && ['feeStructure', 'miscellaneous'].includes(field.name) && formData.programType !== 'B.Voc') {
                             return null;
                         }
+
+                        // Syllabus remains visible for all programs per previous request
+                        // if (doctype === 'program' && field.name === 'syllabus' && ...) { ... }
 
                         // Hide Study Center field ONLY for StudyCenter role (it's their own center)
                         // For Operations/SuperAdmin, keep it VISIBLE so they can verify/choose

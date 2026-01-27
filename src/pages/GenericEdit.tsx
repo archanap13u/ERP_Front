@@ -43,10 +43,18 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
 
                         const res = await fetch(url);
                         const json = await res.json();
-                        options[field.name] = (json.data || []).map((item: any) => ({
-                            label: item.job_title || item.title || item.name || item.employeeName || item.studentName || item._id,
-                            value: item._id || item.name // Ensure we use ID if available for reliable linking
-                        }));
+                        options[field.name] = (json.data || []).map((item: any) => {
+                            const linkLower = field.link!.toLowerCase();
+                            const isAcademic = ['studycenter', 'university', 'program', 'department'].includes(linkLower);
+                            const forceIdValue = field.name.endsWith('Id') || field.name === 'reportsTo' || field.name === 'vacancy';
+
+                            const nameVal = item.universityName || item.centerName || item.programName || item.itemName || item.item_name || item.applicantName || item.leadName || item.customerName || item.supplierName || item.projectName || item.fullName || item.name || item.title;
+
+                            return {
+                                label: nameVal || item.employeeName || item.studentName || item.job_title || item._id,
+                                value: forceIdValue ? (item._id || item.name) : (isAcademic ? (nameVal || item._id) : (field.link === 'designation' ? item.title : (item._id || item.name)))
+                            };
+                        });
 
                         // For Announcements, verify distinct 'All' and 'None' options
                         if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetCenter')) {
@@ -195,65 +203,79 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
 
             <div className="p-8 bg-white border border-[#d1d8dd] rounded-lg shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                    {fields.map((field, idx) => (
-                        <div key={idx} className="space-y-1.5">
-                            <label className="text-[12px] font-semibold text-gray-600">
-                                {field.label} {field.required && <span className="text-red-500">*</span>}
-                            </label>
+                    {fields.map((field, idx) => {
+                        const userRole = localStorage.getItem('user_role');
 
-                            {/* Image Preview for Logo/Banner */}
-                            {(field.name === 'logo' || field.name === 'bannerImage') && formData[field.name] && (
-                                <div className="mb-2">
-                                    <img
-                                        src={formData[field.name]}
-                                        alt={field.label}
-                                        className={`rounded-lg border border-gray-200 object-cover ${field.name === 'logo' ? 'w-24 h-24' : 'w-full h-40'}`}
-                                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                        // [Fix] Enforce Isolation: Hide Study Center field for StudyCenter users
+                        if (field.name === 'studyCenter' && userRole === 'StudyCenter') {
+                            return null;
+                        }
+
+                        // Conditional visibility for Program fields: hide B.Voc-only fields for Skill programs
+                        if (doctype === 'program' && ['feeStructure', 'miscellaneous'].includes(field.name) && formData.programType !== 'B.Voc') {
+                            return null;
+                        }
+
+                        return (
+                            <div key={idx} className="space-y-1.5">
+                                <label className="text-[12px] font-semibold text-gray-600">
+                                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                                </label>
+
+                                {/* Image Preview for Logo/Banner */}
+                                {(field.name === 'logo' || field.name === 'bannerImage') && formData[field.name] && (
+                                    <div className="mb-2">
+                                        <img
+                                            src={formData[field.name]}
+                                            alt={field.label}
+                                            className={`rounded-lg border border-gray-200 object-cover ${field.name === 'logo' ? 'w-24 h-24' : 'w-full h-40'}`}
+                                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                                        />
+                                    </div>
+                                )}
+
+                                {field.type === 'select' ? (
+                                    <select
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all disabled:opacity-70"
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                        disabled={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
+                                    >
+                                        <option value="">Select...</option>
+                                        {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                                        {(dynamicOptions[field.name] || []).map((opt: any) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                ) : field.type === 'date' ? (
+                                    <input
+                                        type="date"
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
+                                        value={formData[field.name]?.split('T')[0] || ''}
+                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                        readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
                                     />
-                                </div>
-                            )}
-
-                            {field.type === 'select' ? (
-                                <select
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all disabled:opacity-70"
-                                    value={formData[field.name] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                    disabled={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
-                                >
-                                    <option value="">Select...</option>
-                                    {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-                                    {(dynamicOptions[field.name] || []).map((opt: any) => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            ) : field.type === 'date' ? (
-                                <input
-                                    type="date"
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
-                                    value={formData[field.name]?.split('T')[0] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                    readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
-                                />
-                            ) : field.type === 'textarea' ? (
-                                <textarea
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all min-h-[100px] read-only:opacity-70"
-                                    value={formData[field.name] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                    placeholder={field.placeholder || ''}
-                                    readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
-                                />
-                            ) : (
-                                <input
-                                    type={field.type}
-                                    placeholder={field.placeholder || ''}
-                                    className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
-                                    value={formData[field.name] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                    readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
-                                />
-                            )}
-                        </div>
-                    ))}
+                                ) : field.type === 'textarea' ? (
+                                    <textarea
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all min-h-[100px] read-only:opacity-70"
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                        placeholder={field.placeholder || ''}
+                                        readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
+                                    />
+                                ) : (
+                                    <input
+                                        type={field.type}
+                                        placeholder={field.placeholder || ''}
+                                        className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-2 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all read-only:opacity-70"
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                        readOnly={doctype === 'complaint' && localStorage.getItem('user_role') === 'HR'}
+                                    />
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 

@@ -36,6 +36,9 @@ export default function LoginPage() {
         localStorage.removeItem('user_features');
         localStorage.removeItem('department_name');
         localStorage.removeItem('department_id');
+        localStorage.removeItem('user_name');
+        localStorage.removeItem('employee_id');
+        localStorage.removeItem('user_id');
 
         try {
             // First, try super admin authentication
@@ -92,21 +95,19 @@ export default function LoginPage() {
                 if (data.user.studyCenter) localStorage.setItem('study_center_name', data.user.studyCenter);
                 if (data.user.centerName) localStorage.setItem('study_center_name', data.user.centerName); // Fix for studycenter document
 
-                if (data.user.role === 'HR' || data.user.role === 'Operations' || data.user.role === 'Finance' || data.user.role === 'DepartmentAdmin') {
-                    // Fetch department details to ensure we have the correct department_name for isolation
-                    if (data.user.departmentId) {
-                        try {
-                            const deptRes = await fetch(`/api/resource/department/${data.user.departmentId}?organizationId=${data.user.organizationId}`);
-                            const deptJson = await deptRes.json();
-                            if (deptJson.data?.name) {
-                                localStorage.setItem('department_name', deptJson.data.name);
-                            }
-                            if (deptJson.data?.features) {
-                                localStorage.setItem('user_features', JSON.stringify(deptJson.data.features));
-                            }
-                        } catch (e) {
-                            console.error('Error fetching department details during login:', e);
+                // Fetch department details to ensure we have the correct department_name for isolation (ALL roles with deptId)
+                if (data.user.departmentId) {
+                    try {
+                        const deptRes = await fetch(`/api/resource/department/${data.user.departmentId}?organizationId=${data.user.organizationId}`);
+                        const deptJson = await deptRes.json();
+                        if (deptJson.data?.name) {
+                            localStorage.setItem('department_name', deptJson.data.name);
                         }
+                        if (deptJson.data?.features) {
+                            localStorage.setItem('user_features', JSON.stringify(deptJson.data.features));
+                        }
+                    } catch (e) {
+                        console.error('Error fetching department details during login:', e);
                     }
                 }
 

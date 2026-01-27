@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, Bell, UserCheck, Clock, CheckCircle, ClipboardList, ArrowRight, UserPlus, Search, Users, Trash2 } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import AnnouncementPopup from '../components/AnnouncementPopup';
+
 import PollWidget from '../components/PollWidget';
 
 export default function CenterDashboard() {
@@ -626,8 +626,6 @@ export default function CenterDashboard() {
                 </div>
 
             </div>
-            {/* Announcement Popup */}
-            <AnnouncementPopup />
         </div>
     );
 }

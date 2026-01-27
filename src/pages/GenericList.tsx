@@ -278,7 +278,7 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                         >
                                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><input type="checkbox" className="rounded" /></td>
                                             <td className="px-4 py-3 font-medium text-blue-600 hover:underline">
-                                                {item.employeeName || item.name || item.job_title || item.title || item.subject || item.holidayName || item.universityName || item.centerName || item.programName || item.studentName || item.student || item._id}
+                                                {item.employeeName || item.studentName || item.itemName || item.item_name || item.applicantName || item.leadName || item.customerName || item.supplierName || item.projectName || item.fullName || item.name || item.job_title || item.title || item.subject || item.holidayName || item.universityName || item.centerName || item.programName || item.student || item._id}
                                             </td>
                                             {doctype === 'employee' && (
                                                 <td className="px-4 py-3 text-[#1d2129] font-mono font-medium">
