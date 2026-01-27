@@ -136,12 +136,13 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
 
                         options[field.name] = (json.data || []).map((item: any) => {
                             const linkLower = field.link!.toLowerCase();
-                            // Academic items should use Name as value
+                            // Academic items usually use Name as value, but NOT if the field ends in 'Id' (those need MongoDB IDs)
                             const isAcademic = ['studycenter', 'university', 'program', 'department'].includes(linkLower);
+                            const forceIdValue = field.name.endsWith('Id') || field.name === 'reportsTo' || field.name === 'vacancy';
 
                             // Department specific mapping for robustness
                             if (linkLower === 'department') {
-                                const name = item.name || item.panelType || item.title || item._id;
+                                const name = forceIdValue ? item._id : (item.name || item.panelType || item.title || item._id);
                                 const label = item.panelType || item.name || item.title || item._id;
                                 return { label: label, value: name, id: item._id };
                             }
@@ -150,7 +151,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
 
                             return {
                                 label: nameVal || item.employeeName || item.studentName || item.job_title || item._id,
-                                value: isAcademic ? (nameVal || item._id) : (field.link === 'designation' ? item.title : (item._id || item.name)),
+                                value: forceIdValue ? (item._id || item.name) : (isAcademic ? (nameVal || item._id) : (field.link === 'designation' ? item.title : (item._id || item.name))),
                                 id: item._id
                             };
                         });
