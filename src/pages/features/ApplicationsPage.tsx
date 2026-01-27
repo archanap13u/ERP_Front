@@ -44,6 +44,25 @@ export default function ApplicationsPage() {
         fetchData();
     }, []);
 
+    const handleApprove = async (id: string, name: string) => {
+        if (!confirm(`Approve application for ${name}?`)) return;
+        try {
+            const orgId = localStorage.getItem('organization_id');
+            const res = await fetch(`/api/resource/studentapplicant/${id}?organizationId=${orgId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ application_status: 'Approved' })
+            });
+            if (res.ok) {
+                setApplications(prev => prev.map(app =>
+                    app._id === id ? { ...app, application_status: 'Approved' } : app
+                ));
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     return (
         <div className="space-y-8 pb-20 text-[#1d2129]">
             <Workspace
@@ -115,12 +134,20 @@ export default function ApplicationsPage() {
                                             <p className="text-[11px] text-gray-500 font-mono">{app.name}</p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="flex items-center gap-2">
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${app.application_status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
                                             app.application_status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
                                             }`}>
                                             {app.application_status || 'Applied'}
                                         </span>
+                                        {app.application_status !== 'Approved' && (
+                                            <button
+                                                onClick={() => handleApprove(app._id, app.student_name)}
+                                                className="bg-emerald-600 text-white px-3 py-1 rounded text-[10px] font-black hover:bg-emerald-700 shadow-sm"
+                                            >
+                                                Approve
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))

@@ -102,6 +102,7 @@ export default function OpsDashboard() {
                 setAllStudents(allStds);
                 // Filter for students needing Ops verification (Pending or Processing)
                 const pendingOps = allStds.filter((s: any) =>
+                    !s.verificationStatus ||
                     s.verificationStatus === 'Processing' ||
                     s.verificationStatus === 'Pending'
                 );
@@ -223,7 +224,7 @@ export default function OpsDashboard() {
                                             }}
                                             className="bg-blue-600 text-white px-3 py-1 rounded text-[11px] font-bold hover:bg-blue-700 shadow-sm"
                                         >
-                                            Verify & Forward
+                                            Approve & Forward
                                         </button>
                                     </div>
                                 </div>

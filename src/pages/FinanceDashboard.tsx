@@ -201,7 +201,10 @@ export default function FinanceDashboard() {
                                                     const res = await fetch(`/api/resource/student/${student._id}?organizationId=${orgId}`, {
                                                         method: 'PUT',
                                                         headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ verificationStatus: 'Active' })
+                                                        body: JSON.stringify({
+                                                            verificationStatus: 'Approved by Accounts',
+                                                            isActive: true
+                                                        })
                                                     });
                                                     if (res.ok) window.location.reload();
                                                 } catch (e) { console.error(e); }

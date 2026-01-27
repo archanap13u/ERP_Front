@@ -19,7 +19,6 @@ export default function HolidaysPage() {
                 const orgId = localStorage.getItem('organization_id');
                 const deptName = localStorage.getItem('department_name');
                 let url = `/api/resource/holiday?organizationId=${orgId || ''}`;
-                if (deptName) url += `&department=${encodeURIComponent(deptName)}`;
 
                 const res = await fetch(url);
                 const json = await res.json();

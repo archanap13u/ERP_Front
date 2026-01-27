@@ -37,7 +37,7 @@ export default function AnnouncementPopup() {
                 // but for now let's just use the determined deptName.
 
                 const baseQuery = `?organizationId=${orgId}`;
-                const deptQuery = `${deptId ? `&departmentId=${deptId}` : ''}${deptName ? `&department=${encodeURIComponent(deptName)}` : ''}`;
+                const deptQuery = `${deptId ? `&departmentId=${deptId}` : ''}`;
 
                 // Determine distinct resource for Study Centers
                 let data = [];
@@ -79,9 +79,9 @@ export default function AnnouncementPopup() {
                 const currentResolvedId = (resolvedCenterId || '').toString().toLowerCase();
 
                 const popups = data.filter((ann: any) => {
-                    if (ann.department === 'None') return false;
+                    if (ann.targetDepartment === 'None') return false;
 
-                    const target = (ann.targetCenter || '').toString().trim().toLowerCase();
+                    const target = (ann.targetCenter || ann.targetStudyCenter || '').toString().trim().toLowerCase();
 
                     if (userRole === 'StudyCenter' && (target === 'none' || !target)) return false;
 
@@ -93,9 +93,10 @@ export default function AnnouncementPopup() {
                     const isNotExpired = !endDate || now <= endDate;
                     const isVisible = isStarted && isNotExpired;
 
+                    const isAll = target === 'all';
                     const nameMatch = target === currentCenter;
                     const idMatch = !!((currentId && target === currentId) || (currentResolvedId && target === currentResolvedId));
-                    const isTargeted = nameMatch || idMatch;
+                    const isTargeted = isAll || nameMatch || idMatch;
 
                     if (isVisible && isTargeted && ann.showAsPopup) {
                         console.log(`[Diagnostic] POPUP MATCH: "${ann.title}" | Target: "${target}" | Reason: ${nameMatch ? 'Exact Name' : 'ID'}`);

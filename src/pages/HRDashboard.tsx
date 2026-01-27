@@ -61,9 +61,10 @@ export default function HRDashboard() {
                 const fetchPromises = [
                     fetch(`${baseUrl}/employee${globalParams}`).then(r => r.json()),
                     fetch(`${baseUrl}/attendance${deptParams}`).then(r => r.json()),
-                    fetch(`${baseUrl}/holiday${deptParams}`).then(r => r.json()),
-                    fetch(`${baseUrl}/announcement${deptParams}`).then(r => r.json()),
-                    fetch(`${baseUrl}/complaint${globalParams}`).then(r => r.json())
+                    fetch(`${baseUrl}/holiday${globalParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/announcement${globalParams}${effectiveDeptId ? `&departmentId=${effectiveDeptId}` : ''}`).then(r => r.json()),
+                    // Explicitly fetch ALL complaints for the organization, ignoring department context params
+                    fetch(`${baseUrl}/complaint?organizationId=${orgId}&view=all`).then(r => r.json())
                 ];
 
                 // Also fetch features live if we have a dept context
@@ -80,7 +81,9 @@ export default function HRDashboard() {
                 const jsonComp = results[4];
                 const jsonFeat = results[5];
 
-                setEmployees(jsonEmp.data || []);
+                setEmployees((jsonEmp.data || []).sort((a: any, b: any) =>
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                ));
                 setCounts({
                     employee: jsonEmp.data?.length || 0,
                     attendance: jsonAtt.data?.length || 0,
@@ -168,6 +171,7 @@ export default function HRDashboard() {
                     { label: 'Add Holiday', href: `/holiday/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                     { label: "My Panel's Staff", href: `/employee?departmentId=${contextData.id || ''}` },
                     { label: "All Employees", href: '/employee' },
+                    { label: "My Staff Portal", href: '/employee-dashboard' }, // Added for easy access to personal complaints
                 ]}
             />
 
@@ -457,10 +461,10 @@ export default function HRDashboard() {
             </div>
 
             {/* Interactive Employee Management System */}
-            <DepartmentStaffManager
+            {/* <DepartmentStaffManager
                 title="Staff & Hierarchy Management"
                 description="Select a department to hire staff and see that department's designated roles."
-            />
+            /> */}
         </div >
     );
 }

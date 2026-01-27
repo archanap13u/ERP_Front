@@ -40,7 +40,7 @@ export const fieldRegistry: { [key: string]: any[] } = {
         { name: 'type', label: 'Type', type: 'select', options: ['Announcement', 'Poll'], default: 'Announcement' },
         { name: 'poll_options_text', label: 'Poll Options (For Polls: Enter one option per line)', type: 'textarea' },
         { name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High'], required: true },
-        { name: 'targetCenter', label: 'Target Study Center', type: 'select', link: 'studycenter', default: 'None' },
+        { name: 'targetStudyCenter', label: 'Target Study Center', type: 'select', link: 'studycenter', default: 'None' },
         { name: 'showAsPopup', label: 'Show as Popup Alert', type: 'checkbox' },
         { name: 'startDate', label: 'Start Date (Visible From)', type: 'datetime-local', required: true },
         { name: 'endDate', label: 'End Date (Visible Until)', type: 'datetime-local', required: true },
@@ -49,7 +49,7 @@ export const fieldRegistry: { [key: string]: any[] } = {
     opsannouncement: [
         { name: 'title', label: 'Title', type: 'text', required: true },
         { name: 'content', label: 'Content', type: 'textarea', required: true },
-        { name: 'targetCenter', label: 'Target Study Center (Select "All" for All Centers)', type: 'select', link: 'studycenter', default: 'None', required: true },
+        { name: 'targetStudyCenter', label: 'Target Study Center (Select "All" for All Centers)', type: 'select', link: 'studycenter', default: 'None', required: true },
         { name: 'type', label: 'Type', type: 'select', options: ['Announcement', 'Poll'], default: 'Announcement' },
         { name: 'poll_options_text', label: 'Poll Options (For Polls)', type: 'textarea' },
         { name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High'], required: true },
@@ -59,11 +59,12 @@ export const fieldRegistry: { [key: string]: any[] } = {
         { name: 'pinned', label: 'Pinned', type: 'checkbox' }
     ],
     complaint: [
+        { name: 'employeeId', label: 'Employee ID', type: 'hidden' }, // Optional (employees)
+        { name: 'username', label: 'Username', type: 'hidden' }, // Optional (admins)
+        { name: 'employeeName', label: 'Filed By', type: 'text' },
         { name: 'subject', label: 'Subject', type: 'text', required: true },
         { name: 'description', label: 'Description', type: 'textarea', required: true },
-        { name: 'status', label: 'Status', type: 'select', options: ['Open', 'In Progress', 'Resolved', 'Dismissed'], default: 'Open' },
-        { name: 'date', label: 'Date', type: 'date' },
-        { name: 'employeeName', label: 'Filed By', type: 'text' }
+        { name: 'date', label: 'Date', type: 'date' }
     ],
     student: [
         { name: 'studentName', label: 'Student Name', type: 'text', required: true },
@@ -112,11 +113,7 @@ export const fieldRegistry: { [key: string]: any[] } = {
         { name: 'date', label: 'Date', type: 'date' },
         { name: 'status', label: 'Status', type: 'select', options: ['Present', 'Absent', 'Half Day', 'On Leave'] },
     ],
-    holiday: [
-        { name: 'holidayName', label: 'Holiday Name', type: 'text', required: true },
-        { name: 'date', label: 'Date', type: 'date', required: true },
-        { name: 'description', label: 'Description', type: 'text' },
-    ],
+
     performancereview: [
         { name: 'employee', label: 'Employee ID', type: 'text', required: true },
         { name: 'employeeName', label: 'Employee Name', type: 'text', required: true },
@@ -159,5 +156,12 @@ export const fieldRegistry: { [key: string]: any[] } = {
         { name: 'semester', label: 'Semester', type: 'select', options: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'] },
         { name: 'batch', label: 'Batch', type: 'text' },
         { name: 'studyCenter', label: 'Study Center', type: 'text' },
+    ],
+    holiday: [
+        { name: 'holidayName', label: 'Holiday Name', type: 'text', required: true },
+        { name: 'date', label: 'Date', type: 'date', required: true },
+        { name: 'description', label: 'Description', type: 'textarea' },
+        { name: 'department', label: 'Target Department (Leave blank for Global/All)', type: 'text' },
+        { name: 'departmentId', label: 'Department ID', type: 'hidden' }
     ]
 };

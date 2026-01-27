@@ -133,7 +133,33 @@ export default function EmployeeTransferPage() {
     // Filter designations based on NEW selected department
     // Designations are now auto-created when vacancies are posted, so we just filter by departmentId
     const filteredDesignations = (() => {
-        if (!formData.newDepartmentId) return [];
+        // 1. Get unique designations from active employees
+        const employeeDesignations = Array.from(new Set(employees.map(e => e.designation).filter(Boolean)));
+
+        // 2. Get unique designations from Vacancies (Job Titles)
+        const vacancyDesignations = Array.from(new Set(vacancies.map(v => v.job_title).filter(Boolean)));
+
+        // Combine unique labels
+        const allDynamicLabels = Array.from(new Set([...employeeDesignations, ...vacancyDesignations]));
+
+        // Convert to objects
+        const dynamicDesignations = allDynamicLabels.map((title, idx) => ({
+            _id: `dynamic-${idx}`,
+            title: title
+        }));
+
+        if (!formData.newDepartmentId) {
+            // Return all static + all dynamic designations if no dept selected
+            const all = [...designations];
+            const existingTitles = new Set(all.map(d => d.title?.toLowerCase()));
+            for (const d of dynamicDesignations) {
+                if (!existingTitles.has(d.title?.toLowerCase())) {
+                    all.push(d);
+                    existingTitles.add(d.title?.toLowerCase());
+                }
+            }
+            return all;
+        }
 
         // Get designations matching by departmentId
         const byDeptId = designations.filter(d => {
@@ -147,13 +173,13 @@ export default function EmployeeTransferPage() {
         const selectedDept = departments.find(d => d._id === formData.newDepartmentId);
         const embeddedDesignations = selectedDept?.designations || [];
 
-        // Convert embedded string designations to objects with title property for consistency
+        // Convert embedded string designations to objects
         const fromDeptEmbedded = embeddedDesignations.map((title: string, idx: number) => ({
             _id: `embedded-${idx}`,
             title: title
         }));
 
-        // Combine both sources, avoiding duplicates
+        // Combine all, avoiding duplicates
         const combined = [...byDeptId];
         const existingTitles = new Set(byDeptId.map(d => d.title?.toLowerCase()));
 
@@ -161,6 +187,14 @@ export default function EmployeeTransferPage() {
             if (!existingTitles.has(embedded.title?.toLowerCase())) {
                 combined.push(embedded);
                 existingTitles.add(embedded.title?.toLowerCase());
+            }
+        }
+
+        // Final layer: include designations from employees and vacancies
+        for (const dynamic of dynamicDesignations) {
+            if (!existingTitles.has(dynamic.title?.toLowerCase())) {
+                combined.push(dynamic);
+                existingTitles.add(dynamic.title?.toLowerCase());
             }
         }
 

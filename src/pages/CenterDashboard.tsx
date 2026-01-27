@@ -95,7 +95,7 @@ export default function CenterDashboard() {
             console.log(`[Diagnostic] Dashboard Refresh for center: "${currentCenter}" (ID: "${currentId}")`);
 
             const filteredAnns = rawAnns.filter((ann: any) => {
-                const target = (ann.targetCenter || '').toString().trim().toLowerCase();
+                const target = (ann.targetCenter || ann.targetStudyCenter || '').toString().trim().toLowerCase();
                 if (target === 'none' || !target) return false;
 
                 const now = new Date();

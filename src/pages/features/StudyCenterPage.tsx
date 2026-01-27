@@ -15,13 +15,14 @@ export default function StudyCenterPage() {
                 const deptId = localStorage.getItem('department_id');
 
                 let queryParams = `?organizationId=${orgId || ''}`;
-                if (deptId) {
-                    queryParams += `&departmentId=${deptId}`;
-                }
+                // Study Centers are organization-wide, not department-specific
+                // Do NOT filter by departmentId
 
+                console.log('[StudyCenterPage] Fetching centers with query:', queryParams);
                 // Using 'studycenter' doctype
                 const res = await fetch(`/api/resource/studycenter${queryParams}`);
                 const json = await res.json();
+                console.log('[StudyCenterPage] Received centers:', json.data?.length || 0, 'centers');
                 const data = json.data || [];
 
                 setCounts({

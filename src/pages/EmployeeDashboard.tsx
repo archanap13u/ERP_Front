@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserCheck, CalendarDays, Megaphone, Clock, GraduationCap, Calendar, Trash2 } from 'lucide-react';
+import { UserCheck, CalendarDays, Megaphone, Clock, GraduationCap, Calendar, Trash2, Plus } from 'lucide-react';
 import PollWidget from '../components/PollWidget';
 
 export default function EmployeeDashboard() {
@@ -50,12 +50,31 @@ export default function EmployeeDashboard() {
                 const baseQuery = `?organizationId=${orgId || ''}`;
                 const annQuery = `${baseQuery}${isRestricted && deptId ? `&departmentId=${deptId}` : ''}`;
                 const holQuery = baseQuery; // Holidays are always org-wide in our inheritance model
-                const compQuery = `${baseQuery}${storedId ? `&employeeId=${storedId}` : ''}${storedName ? `&employeeName=${encodeURIComponent(storedName)}` : ''}`;
+
+                // [Fix] Only fetch complaints if we have a valid Employee ID. 
+                // "My Recent Complaints" should strictly be the user's own.
+                // If I am Admin/HR without an employee ID, I should see NONE here, not ALL.
+                let compPromise: Promise<any> = Promise.resolve({ json: () => Promise.resolve({ data: [] }) });
+                const timestamp = new Date().getTime(); // Cache busting
+
+                if (storedId) {
+                    const compQuery = `${baseQuery}&employeeId=${storedId}${storedName ? `&employeeName=${encodeURIComponent(storedName)}` : ''}&_t=${timestamp}`;
+                    console.log(`[EmployeeDashboard] Fetching complaints for ID: ${storedId} with query: ${compQuery}`);
+                    compPromise = fetch(`/api/resource/complaint${compQuery}`);
+                } else if (storedName && userRole !== 'Student') {
+                    // Fallback for Dept Admins (Operations/HR) who want to see their own complaints
+                    const compQuery = `${baseQuery}&username=${encodeURIComponent(storedName)}&_t=${timestamp}`;
+                    console.log(`[EmployeeDashboard] Fetching complaints for Dept Admin (Username): ${storedName}`);
+                    compPromise = fetch(`/api/resource/complaint${compQuery}`);
+                } else {
+                    console.warn('[EmployeeDashboard] No Employee ID found and not a Dept Admin. Skipping complaint fetch.');
+                }
+
 
                 const [resAnn, resHol, resComp] = await Promise.all([
                     fetch(`/api/resource/announcement${annQuery}`),
                     fetch(`/api/resource/holiday${holQuery}`),
-                    fetch(`/api/resource/complaint${compQuery}`)
+                    compPromise
                 ]);
                 const [jsonAnn, jsonHol, jsonComp] = await Promise.all([resAnn.json(), resHol.json(), resComp.json()]);
 
@@ -69,9 +88,22 @@ export default function EmployeeDashboard() {
                     return now >= start && now <= end;
                 });
 
+                // Client-Side Double Check: Ensure privacy even if API leaks
+                const safeComplaints = (jsonComp.data || []).filter((c: any) => {
+                    // 1. If I have an EmployeeID, this complaint MUST match it
+                    if (storedId) {
+                        return c.employeeId === storedId;
+                    }
+                    // 2. If I am a Dept Admin (no EmpID), this complaint MUST match my Username AND have no EmployeeID
+                    if (storedName && !storedId) {
+                        return c.username === storedName || (!c.employeeId && c.employeeName === storedName);
+                    }
+                    return false;
+                });
+
                 setAnnouncements(validAnnouncements);
                 setHolidays(jsonHol.data || []);
-                setComplaints(jsonComp.data || []);
+                setComplaints(safeComplaints); // Use the filtered list
             } catch (e) {
                 console.error(e);
             } finally {
@@ -87,7 +119,7 @@ export default function EmployeeDashboard() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div>
                     <h1 className="text-xl font-bold text-[#1d2129] flex items-center gap-2">
-                        Dashboard
+                        Staff Portal
                         <span className="text-[12px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-black uppercase text-center min-w-[60px]">
                             {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
                         </span>
@@ -106,13 +138,14 @@ export default function EmployeeDashboard() {
                 </div>
             </div>
 
+            {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Announcements Feed */}
+                {/* Left Column: Announcements & Quick Actions (Span 2) */}
                 <div className="lg:col-span-2 space-y-6">
-                    <section className="bg-white rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-[#d1d8dd] bg-gradient-to-r from-gray-50 to-white flex items-center gap-2">
+                    <section className="bg-white rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden min-h-[400px]">
+                        <div className="px-6 py-4 border-b border-[#d1d8dd] bg-gradient-to-r from-gray-50/50 to-white flex items-center gap-2">
                             <Megaphone size={16} className="text-blue-600" />
-                            <h2 className="font-bold text-[14px]">Announcements & Polls</h2>
+                            <h2 className="font-bold text-[14px]">Announcements & Community</h2>
                         </div>
                         <div className="p-6">
                             {loading ? (
@@ -121,41 +154,42 @@ export default function EmployeeDashboard() {
                                     <div className="h-4 bg-gray-100 rounded w-1/2"></div>
                                 </div>
                             ) : announcements.length === 0 ? (
-                                <p className="text-gray-400 italic text-center text-[13px]">No announcements available.</p>
+                                <div className="py-20 text-center">
+                                    <Megaphone size={32} className="mx-auto text-gray-200 mb-3" />
+                                    <p className="text-gray-400 italic text-[13px]">No active announcements for your department.</p>
+                                </div>
                             ) : (
                                 announcements.map((ann, idx) => {
                                     const isPoll = ann.type === 'Poll';
-                                    const hasVoted = isPoll && ann.voters?.includes(voterId);
-                                    const totalVotes = isPoll ? ann.pollOptions?.reduce((acc: number, opt: any) => acc + (opt.votes || 0), 0) : 0;
-
                                     return (
-                                        <div key={idx} className="group">
+                                        <div key={idx} className="group mb-8 last:mb-0">
                                             <div className="flex items-start justify-between">
-                                                <h3 className="text-[14px] font-bold group-hover:text-blue-600 transition-colors flex items-center gap-2">
+                                                <h3 className="text-[15px] font-black text-gray-900 group-hover:text-blue-600 transition-colors flex items-center gap-2">
                                                     {ann.title}
-                                                    {isPoll && <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full">Poll</span>}
+                                                    {isPoll && <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Poll</span>}
                                                 </h3>
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase">{new Date(ann.date || ann.createdAt).toLocaleDateString()}</span>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{new Date(ann.date || ann.createdAt).toLocaleDateString()}</span>
                                             </div>
 
                                             <p className="text-[13px] text-gray-600 mt-2 leading-relaxed whitespace-pre-wrap">{ann.content}</p>
 
                                             {isPoll && (
-                                                <PollWidget
-                                                    announcement={ann}
-                                                    voterId={voterId}
-                                                    doctype="announcement"
-                                                    onVoteSuccess={(updated: any) => {
-                                                        setAnnouncements(prev => prev.map(p => p._id === updated._id ? updated : p));
-                                                    }}
-                                                />
+                                                <div className="mt-4">
+                                                    <PollWidget
+                                                        announcement={ann}
+                                                        voterId={voterId}
+                                                        doctype="announcement"
+                                                        onVoteSuccess={(updated: any) => {
+                                                            setAnnouncements(prev => prev.map(p => p._id === updated._id ? updated : p));
+                                                        }}
+                                                    />
+                                                </div>
                                             )}
 
-                                            <div className="mt-3 flex items-center gap-2">
-                                                <div className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[8px] flex items-center justify-center font-bold">HR</div>
-                                                <span className="text-[11px] text-gray-400">Post by {ann.postedBy || 'Admin'}</span>
+                                            <div className="mt-4 flex items-center gap-2 pt-4 border-t border-gray-50">
+                                                <div className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[8px] flex items-center justify-center font-black border border-blue-100">HR</div>
+                                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Post by {ann.postedBy || 'Human Resources'}</span>
                                             </div>
-                                            {idx !== announcements.length - 1 && <hr className="mt-6 border-[#f0f4f7]" />}
                                         </div>
                                     );
                                 })
@@ -164,67 +198,56 @@ export default function EmployeeDashboard() {
                     </section>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-4 hover:bg-emerald-100 transition-colors text-left group">
-                            <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                        <button className="p-4 bg-white border border-[#d1d8dd] rounded-2xl flex items-center gap-4 hover:shadow-md hover:border-blue-400 transition-all text-left group">
+                            <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <UserCheck size={20} />
                             </div>
                             <div>
-                                <p className="font-bold text-emerald-900 text-[14px]">Log Attendance</p>
-                                <p className="text-[11px] text-emerald-700">Submit your daily entry</p>
+                                <p className="font-bold text-gray-900 text-[14px]">Log Attendance</p>
+                                <p className="text-[11px] text-gray-500 font-medium">Submit your daily entry</p>
                             </div>
                         </button>
-                        <button className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-center gap-4 hover:bg-blue-100 transition-colors text-left group">
-                            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                        <button className="p-4 bg-white border border-[#d1d8dd] rounded-2xl flex items-center gap-4 hover:shadow-md hover:border-blue-400 transition-all text-left group">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <Calendar size={20} />
                             </div>
                             <div>
-                                <p className="font-bold text-blue-900 text-[14px]">Leave Request</p>
-                                <p className="text-[11px] text-blue-700">Apply for time off</p>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => window.location.href = '/complaint/new?redirect=/employee-dashboard'}
-                            className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-4 hover:bg-red-100 transition-colors text-left group col-span-1 sm:col-span-2"
-                        >
-                            <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                                <Megaphone size={20} />
-                            </div>
-                            <div>
-                                <p className="font-bold text-red-900 text-[14px]">File Complaint</p>
-                                <p className="text-[11px] text-red-700">Report an issue to HR</p>
+                                <p className="font-bold text-gray-900 text-[14px]">Leave Request</p>
+                                <p className="text-[11px] text-gray-500 font-medium">Apply for time off</p>
                             </div>
                         </button>
                     </div>
                 </div>
 
-                <div className="space-y-8">
-                    <section className="bg-white rounded-xl border border-[#d1d8dd] shadow-sm overflow-hidden text-left">
-                        <div className="p-4 border-b border-[#f0f4f7] bg-[#f9fafb] flex items-center gap-2">
-                            <CalendarDays size={18} className="text-orange-600" />
-                            <h2 className="text-[15px] font-bold">Upcoming Holidays</h2>
+                {/* Right Column: Holidays & Complaints */}
+                <div className="space-y-6">
+                    {/* Upcoming Holidays Card */}
+                    <section className="bg-white rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-[#d1d8dd] bg-gradient-to-r from-orange-50/50 to-white flex items-center gap-2">
+                            <CalendarDays size={16} className="text-orange-500" />
+                            <h2 className="font-bold text-[14px]">Upcoming Holidays</h2>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div className="p-4 space-y-3">
                             {loading ? (
-                                <div className="space-y-4">
-                                    <div className="h-10 bg-gray-50 rounded"></div>
-                                    <div className="h-10 bg-gray-50 rounded"></div>
+                                <div className="animate-pulse space-y-3">
+                                    <div className="h-12 bg-gray-50 rounded-xl"></div>
+                                    <div className="h-12 bg-gray-50 rounded-xl"></div>
                                 </div>
                             ) : holidays.length === 0 ? (
-                                <p className="text-gray-400 italic text-center text-[12px]">No upcoming holidays.</p>
+                                <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                                    <CalendarDays size={24} className="mx-auto text-gray-200 mb-2" />
+                                    <p className="text-gray-400 italic text-[12px]">No upcoming holidays.</p>
+                                </div>
                             ) : (
-                                holidays.map((hol, idx) => (
-                                    <div key={idx} className="flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-orange-50 rounded-lg flex flex-col items-center justify-center border border-orange-100 min-w-[40px]">
-                                            <span className="text-[10px] font-bold text-orange-600 uppercase">
-                                                {new Date(hol.date).toLocaleDateString('en-US', { month: 'short' })}
-                                            </span>
-                                            <span className="text-[13px] font-bold text-orange-900">
-                                                {new Date(hol.date).getDate()}
-                                            </span>
+                                holidays.slice(0, 5).map((hol, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50/50 rounded-xl border border-transparent hover:border-orange-100 hover:bg-white transition-all">
+                                        <div className="w-10 h-10 bg-white rounded-lg shadow-sm flex flex-col items-center justify-center border border-gray-100 shrink-0">
+                                            <span className="text-[9px] font-black text-orange-500 uppercase">{new Date(hol.date).toLocaleDateString(undefined, { month: 'short' })}</span>
+                                            <span className="text-[14px] font-black text-gray-900 leading-none">{new Date(hol.date).getDate()}</span>
                                         </div>
-                                        <div>
-                                            <p className="text-[13px] font-bold">{hol.holidayName}</p>
-                                            <p className="text-[11px] text-gray-500">{new Date(hol.date).toLocaleDateString('en-US', { weekday: 'long' })}</p>
+                                        <div className="min-w-0">
+                                            <h4 className="text-[13px] font-bold text-gray-800 truncate">{hol.holidayName}</h4>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{new Date(hol.date).toLocaleDateString(undefined, { weekday: 'long' })}</p>
                                         </div>
                                     </div>
                                 ))
@@ -232,77 +255,60 @@ export default function EmployeeDashboard() {
                         </div>
                     </section>
 
-                    <section className="bg-blue-600 rounded-xl p-6 text-white shadow-lg relative overflow-hidden text-left">
-                        <div className="relative z-10">
-                            <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest mb-1">Employee Profile</p>
-                            <p className="text-[16px] font-bold mb-4">{name}</p>
-                            <div className="space-y-2 opacity-90">
-                                <div className="flex justify-between text-[12px]">
-                                    <span>ID:</span>
-                                    <span className="font-bold">{empId || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between text-[12px]">
-                                    <span>System:</span>
-                                    <span className="font-bold">Education ERP</span>
-                                </div>
+                    {/* Recent Complaints Card */}
+                    <section className="bg-white rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-[#d1d8dd] bg-gradient-to-r from-red-50/50 to-white flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Megaphone size={16} className="text-red-600" />
+                                <h2 className="font-bold text-[14px]">My Personal Complaints</h2>
                             </div>
+                            <button
+                                onClick={() => window.location.href = '/complaint/new?redirect=/employee-dashboard'}
+                                className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                                title="File New Complaint"
+                            >
+                                <Plus size={14} />
+                            </button>
                         </div>
-                        <div className="absolute -right-4 -bottom-4 opacity-10">
-                            <GraduationCap size={120} />
+                        <div className="p-4 space-y-3">
+                            {loading ? (
+                                <div className="animate-pulse flex gap-3">
+                                    <div className="w-10 h-10 bg-gray-100 rounded-xl"></div>
+                                    <div className="flex-1 h-10 bg-gray-100 rounded-xl"></div>
+                                </div>
+                            ) : complaints.length === 0 ? (
+                                <div className="py-12 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                                    <p className="text-gray-400 italic text-[12px]">No complaints filed.</p>
+                                </div>
+                            ) : (
+                                complaints.slice(0, 3).map((comp, idx) => (
+                                    <div key={idx} className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-red-100 transition-all flex items-center justify-between group">
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="text-[13px] font-bold text-gray-800 truncate">{comp.subject}</h4>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`w-1.5 h-1.5 rounded-full ${comp.status === 'Resolved' ? 'bg-green-500' :
+                                                    comp.status === 'In Progress' ? 'bg-blue-500' : 'bg-amber-500'
+                                                    }`}></span>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase">{comp.status}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeleteComplaint(comp._id)}
+                                            className="text-gray-300 hover:text-red-500 p-1 lg:opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </section>
                 </div>
-                {/* Complaints Section */}
-                <div className="bg-white rounded-xl border border-[#d1d8dd] shadow-sm overflow-hidden text-left">
-                    <div className="p-4 border-b border-[#f0f4f7] bg-[#f9fafb] flex items-center gap-2">
-                        <Megaphone size={18} className="text-red-600" />
-                        <h2 className="text-[15px] font-bold">My Recent Complaints</h2>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        {loading ? (
-                            <div className="space-y-4">
-                                <div className="h-10 bg-gray-50 rounded"></div>
-                            </div>
-                        ) : complaints.length === 0 ? (
-                            <p className="text-gray-400 italic text-center text-[12px]">No complaints filed.</p>
-                        ) : (
-                            complaints.slice(0, 3).map((comp, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Subject</p>
-                                        <p className="text-[14px] font-bold text-[#1d2129]">{comp.subject}</p>
-
-                                        <div className="mt-3 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Complaint Content</p>
-                                            <p className="text-[12px] text-gray-600 line-clamp-3 italic leading-relaxed">"{comp.description}"</p>
-                                        </div>
-
-                                        <p className="text-[10px] text-gray-400 mt-2 uppercase font-black tracking-widest flex items-center gap-1.5">
-                                            <Clock size={10} />
-                                            {new Date(comp.date || comp.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </p>
-                                    </div>
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${comp.status === 'Resolved' ? 'bg-green-100 text-green-700' :
-                                        comp.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                                            comp.status === 'Dismissed' ? 'bg-gray-100 text-gray-600' :
-                                                'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                        {comp.status}
-                                    </span>
-                                    <button
-                                        onClick={() => handleDeleteComplaint(comp._id)}
-                                        className="ml-2 text-gray-400 hover:text-red-500 p-1 hover:bg-red-50 rounded"
-                                        title="Delete Complaint"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
             </div>
-        </div >
+
+
+
+
+        </div>
     );
 }

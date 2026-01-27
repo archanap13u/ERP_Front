@@ -59,7 +59,9 @@ export default function NotificationsPage() {
                 const currentId = (userCenterId || '').toString().toLowerCase();
 
                 const filtered = data.filter((ann: any) => {
-                    const target = (ann.targetCenter || '').toString().trim().toLowerCase();
+                    // Robust check for both possible field names
+                    const target = (ann.targetCenter || ann.targetStudyCenter || '').toString().trim().toLowerCase();
+
                     if (userRole === 'StudyCenter' && (target === 'none' || !target)) return false;
 
                     const now = new Date();
@@ -70,14 +72,16 @@ export default function NotificationsPage() {
                     const isNotExpired = !endDate || now <= endDate;
                     const isVisible = isStarted && isNotExpired;
 
+                    // Show if targeted specifically to this center, OR to "All" centers
+                    const isAll = target === 'all';
                     const nameMatch = target === currentCenter;
                     const idMatch = !!(currentId && (target === currentId));
                     const roleMatch = userRole === 'Operations' || userRole === 'DepartmentAdmin';
 
-                    const isTargeted = nameMatch || idMatch || roleMatch;
+                    const isTargeted = isAll || nameMatch || idMatch || roleMatch;
 
                     if (isVisible && isTargeted) {
-                        console.log(`[Diagnostic] NOTIFICATION MATCH: "${ann.title}" | Target: "${target}" | Reason: ${roleMatch ? 'Role' : (nameMatch ? 'Exact Name' : 'ID')}`);
+                        console.log(`[Diagnostic] NOTIFICATION MATCH: "${ann.title}" | Target: "${target}" | Reason: ${roleMatch ? 'Role' : (isAll ? 'All' : (nameMatch ? 'Exact Name' : 'ID'))}`);
                     }
 
                     return isVisible && isTargeted;

@@ -64,12 +64,22 @@ export default function LoginPage() {
             });
 
             const data = await res.json();
+            console.log('[Login] 📥 Response data:', data);
 
             if (data.success) {
+                console.log('[Login] ✓ Success! Role:', data.user.role);
                 localStorage.setItem('user_role', data.user.role);
                 localStorage.setItem('user_name', data.user.name);
                 localStorage.setItem('user_id', data.user.id || data.user._id);
-                if (data.user.employeeId) localStorage.setItem('employee_id', data.user.employeeId);
+
+                // CRITICAL: Store employee_id for Employee role
+                if (data.user.employeeId) {
+                    console.log('[Login] 💾 Storing employee_id:', data.user.employeeId);
+                    localStorage.setItem('employee_id', data.user.employeeId);
+                } else {
+                    console.warn('[Login] ⚠️  No employeeId in response for role:', data.user.role);
+                }
+
                 if (data.user.organizationId) localStorage.setItem('organization_id', data.user.organizationId);
                 if (data.user.departmentId) localStorage.setItem('department_id', data.user.departmentId);
                 if (data.user.panelType) localStorage.setItem('department_panel_type', data.user.panelType);
@@ -124,7 +134,7 @@ export default function LoginPage() {
                     console.log('[Login] 🎓 Detected Student. Navigating to /student-dashboard');
                     navigate('/student-dashboard');
                 } else if (data.user.role === 'StudyCenter') {
-                    console.log('[Login] 🏢 Detected StudyCenter. Navigating to /center-dashboard');
+                    console.log('[Login] 🏢 Detected StudyCenter! ID:', data.user.id, 'Targeting /center-dashboard');
                     navigate('/center-dashboard');
                 } else if (data.user.role === 'DepartmentAdmin') {
                     console.log('[Login] 🏗️ Detected DepartmentAdmin role.');

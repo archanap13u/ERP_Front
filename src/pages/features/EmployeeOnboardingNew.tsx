@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Save, ArrowLeft, Building2, Briefcase, User, Mail, Lock, Calendar, Shield } from 'lucide-react';
+import { UserPlus, Save, ArrowLeft, Building2, Briefcase, User, Mail, Lock, Calendar, Shield, RefreshCcw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Workspace from '../../components/Workspace';
 
@@ -22,8 +22,44 @@ export default function EmployeeOnboardingNew() {
         dateOfJoining: new Date().toISOString().split('T')[0],
         status: 'Active',
         vacancy: '', // Linked vacancy
-        employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}` // Temporary auto-gen
+        employeeId: '' // Manual entry required
     });
+
+
+    const fetchVacancies = () => {
+        const orgId = localStorage.getItem('organization_id');
+        // Fetch Open Job Openings (Vacancies) and calculate remaining positions
+        fetch(`/api/resource/jobopening?organizationId=${orgId}`)
+            .then(res => res.json())
+            .then(jobsJson => {
+                fetch(`/api/resource/employee?organizationId=${orgId}`)
+                    .then(res => res.json())
+                    .then(empsJson => {
+                        const jobs = jobsJson.data || [];
+                        const employees = empsJson.data || [];
+
+                        // Count hired per vacancy
+                        const hiredPerVacancy: Record<string, number> = {};
+                        for (const emp of employees) {
+                            const jobId = emp.jobOpening?._id || emp.jobOpening;
+                            if (jobId) {
+                                hiredPerVacancy[jobId] = (hiredPerVacancy[jobId] || 0) + 1;
+                            }
+                        }
+
+                        // Annotate jobs with remaining positions
+                        const annotatedJobs = jobs.filter((j: any) => j.status === 'Open').map((j: any) => ({
+                            ...j,
+                            hired: hiredPerVacancy[j._id] || 0,
+                            remaining: (j.no_of_positions || 1) - (hiredPerVacancy[j._id] || 0)
+                        }));
+
+                        setVacancies(annotatedJobs);
+                        console.log('Vacancies refreshed:', annotatedJobs.length);
+                    });
+            })
+            .catch(console.error);
+    };
 
     useEffect(() => {
         const orgId = localStorage.getItem('organization_id');
@@ -33,32 +69,7 @@ export default function EmployeeOnboardingNew() {
             .then(json => setDepartments(json.data || []))
             .catch(console.error);
 
-        // Fetch Open Job Openings (Vacancies) and calculate remaining positions
-        Promise.all([
-            fetch(`/api/resource/jobopening?organizationId=${orgId}`).then(r => r.json()),
-            fetch(`/api/resource/employee?organizationId=${orgId}`).then(r => r.json())
-        ]).then(([jobsJson, empsJson]) => {
-            const jobs = jobsJson.data || [];
-            const employees = empsJson.data || [];
-
-            // Count hired per vacancy
-            const hiredPerVacancy: Record<string, number> = {};
-            for (const emp of employees) {
-                const jobId = emp.jobOpening?._id || emp.jobOpening;
-                if (jobId) {
-                    hiredPerVacancy[jobId] = (hiredPerVacancy[jobId] || 0) + 1;
-                }
-            }
-
-            // Annotate jobs with remaining positions
-            const annotatedJobs = jobs.filter((j: any) => j.status === 'Open').map((j: any) => ({
-                ...j,
-                hired: hiredPerVacancy[j._id] || 0,
-                remaining: (j.no_of_positions || 1) - (hiredPerVacancy[j._id] || 0)
-            }));
-
-            setVacancies(annotatedJobs);
-        }).catch(console.error);
+        fetchVacancies();
 
         // Fetch All Designations (will filter client-side or we could fetch on dept change)
         fetch(`/api/resource/designation?organizationId=${orgId}`)
@@ -148,7 +159,7 @@ export default function EmployeeOnboardingNew() {
 
             if (res.ok) {
                 alert('Employee onboarded successfully!');
-                navigate('/employee');
+                navigate('/hr');
             } else {
                 const json = await res.json();
                 alert('Error: ' + (json.error || 'Failed to onboard employee'));
@@ -164,7 +175,33 @@ export default function EmployeeOnboardingNew() {
     // Filter designations based on selected department
     // Designations are now auto-created when vacancies are posted, so we just filter by departmentId
     const filteredDesignations = useMemo(() => {
-        if (!formData.departmentId) return designations;
+        // 1. Get unique designations from active employees (Managers)
+        const employeeDesignations = Array.from(new Set(managers.map(m => m.designation).filter(Boolean)));
+
+        // 2. Get unique designations from Vacancies (Job Titles)
+        const vacancyDesignations = Array.from(new Set(vacancies.map(v => v.job_title).filter(Boolean)));
+
+        // Combine unique labels
+        const allDynamicLabels = Array.from(new Set([...employeeDesignations, ...vacancyDesignations]));
+
+        // Convert these labels into objects compatible with the designations state
+        const dynamicDesignations = allDynamicLabels.map((title, idx) => ({
+            _id: `dynamic-${idx}`,
+            title: title
+        }));
+
+        if (!formData.departmentId) {
+            // If no dept selected, return all static + all dynamic designations
+            const all = [...designations];
+            const existingTitles = new Set(all.map(d => d.title?.toLowerCase()));
+            for (const d of dynamicDesignations) {
+                if (!existingTitles.has(d.title?.toLowerCase())) {
+                    all.push(d);
+                    existingTitles.add(d.title?.toLowerCase());
+                }
+            }
+            return all;
+        }
 
         const selectedDept = departments.find(d => d._id === formData.departmentId);
         const deptName = selectedDept?.name || formData.department;
@@ -196,9 +233,17 @@ export default function EmployeeOnboardingNew() {
             }
         }
 
-        console.log('Onboarding - Filtered Designations for', deptName, ':', combined);
-        return combined.length > 0 ? combined : designations;
-    }, [formData.departmentId, designations, departments, formData.department]);
+        // Add dynamic designations from employees and vacancies
+        for (const d of dynamicDesignations) {
+            if (!existingTitles.has(d.title?.toLowerCase())) {
+                combined.push(d);
+                existingTitles.add(d.title?.toLowerCase());
+            }
+        }
+
+        console.log('Onboarding - Filtered Designations for', deptName, ':', combined.length);
+        return combined;
+    }, [formData.departmentId, designations, departments, formData.department, managers, vacancies]);
 
     useEffect(() => {
         if (formData.departmentId) {
@@ -242,6 +287,14 @@ export default function EmployeeOnboardingNew() {
                             >
                                 <span className="text-lg">+</span> Post New Vacancy
                             </Link>
+                            <button
+                                type="button"
+                                onClick={fetchVacancies}
+                                className="ml-2 text-gray-400 hover:text-blue-600 p-1 hover:bg-blue-50 rounded-full transition-all"
+                                title="Refresh Vacancy List"
+                            >
+                                <RefreshCcw size={14} />
+                            </button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <select
@@ -266,8 +319,6 @@ export default function EmployeeOnboardingNew() {
                             </div>
                         </div>
                     </div>
-
-                    {/* Personal Information */}
                     <div>
                         <h4 className="text-[14px] font-bold text-gray-900 mb-4 pb-2 border-b flex items-center gap-2">
                             <User size={16} /> Personal Information
@@ -374,6 +425,9 @@ export default function EmployeeOnboardingNew() {
                                         disabled={!formData.departmentId}
                                     >
                                         <option value="">{formData.departmentId ? 'Select Designation' : 'Select Dept First'}</option>
+                                        {formData.designation && !filteredDesignations.some(d => d.title === formData.designation) && (
+                                            <option value={formData.designation}>{formData.designation} (From Vacancy)</option>
+                                        )}
                                         {filteredDesignations.map(d => (
                                             <option key={d._id} value={d.title}>{d.title}</option>
                                         ))}

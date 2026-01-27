@@ -82,16 +82,40 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                 const isAdminOrHR = userRole === 'SuperAdmin' || userRole === 'OrganizationAdmin' || userRole === 'HR' || userRole === 'Operations';
 
                 if (!isGlobalDoctype || !isAdminOrHR) {
-                    if (deptId) url += `&departmentId=${deptId}`;
-                    if (deptName) url += `&department=${encodeURIComponent(deptName)}`;
+                    // For Job Openings, HR should see ALL, regardless of their own department
+                    if (doctype === 'jobopening' && (deptName === 'Human Resources' || deptName === 'HR')) {
+                        // Do not filter
+                    } else {
+                        if (deptId) url += `&departmentId=${deptId}`;
+                        if (deptName) url += `&department=${encodeURIComponent(deptName)}`;
+                    }
                 }
 
-                // Extra privacy for complaints: Employees only see their own
-                if (doctype === 'complaint' && userRole === 'Employee') {
-                    const storedEmpId = localStorage.getItem('employee_id');
-                    const storedEmpName = localStorage.getItem('user_name');
-                    if (storedEmpId) url += `&employeeId=${storedEmpId}`;
-                    if (storedEmpName) url += `&employeeName=${encodeURIComponent(storedEmpName)}`;
+                // Extra privacy for complaints: Employees AND Dept Admins only see their own
+                // Only HR (Dept) and SuperAdmin (Global) can see ALL complaints. 
+                // OrganizationAdmin is restricted because they might be a Dept Head acting as Org Admin.
+                if (doctype === 'complaint') {
+                    const isHR = userRole === 'HR' || deptName === 'Human Resources' || deptName === 'HR';
+                    const isSuper = userRole === 'SuperAdmin'; // REMOVED OrganizationAdmin from here
+
+                    console.log(`[GenericList] Complaint Access Check: Role=${userRole}, Dept=${deptName}, isHR=${isHR}, isSuper=${isSuper}`);
+
+                    if (!isHR && !isSuper) {
+                        const storedEmpId = localStorage.getItem('employee_id');
+                        const storedUserName = localStorage.getItem('user_name');
+
+                        // Pass both if available, backend handles OR logic
+                        if (storedEmpId && storedEmpId !== 'null') url += `&employeeId=${storedEmpId}`;
+
+                        // CRITICAL: We must pass 'username' param for Dept Admins (e.g. 'operation') who don't have employee IDs
+                        if (storedUserName && storedUserName !== 'null') url += `&username=${encodeURIComponent(storedUserName)}`;
+
+                        console.log(`[GenericList] Restricted Fetch URL: ${url}`);
+                    } else {
+                        // HR/SuperAdmin: Explicitly request ALL records
+                        url += `&view=all`;
+                        console.log(`[GenericList] Admin Fetch URL (View All): ${url}`);
+                    }
                 }
 
                 // [Fix] Enforce Isolation for Study Center Users

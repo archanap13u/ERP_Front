@@ -54,7 +54,7 @@ export default function StudentRecordsPage() {
 
                 setCounts({
                     total: data.length,
-                    active: data.length,
+                    active: data.filter((s: any) => s.isActive).length,
                 });
 
                 setStudents(data);

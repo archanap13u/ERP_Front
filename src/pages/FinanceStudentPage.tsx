@@ -17,7 +17,7 @@ export default function FinanceStudentPage() {
         try {
             const orgId = localStorage.getItem('organization_id');
             // Fetch based on tab: pending -> Verified by Ops, active -> Active
-            const status = activeTab === 'pending' ? 'Verified by Ops' : 'Active';
+            const status = activeTab === 'pending' ? 'Verified by Ops' : 'Approved by Accounts';
 
             console.log(`[FinancePage] Fetching: /api/resource/student?organizationId=${orgId}&verificationStatus=${status}`);
             const res = await fetch(`/api/resource/student?organizationId=${orgId}&verificationStatus=${status}`);
@@ -40,7 +40,10 @@ export default function FinanceStudentPage() {
             const res = await fetch(`/api/resource/student/${id}?organizationId=${orgId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ verificationStatus: 'Active' })
+                body: JSON.stringify({
+                    verificationStatus: 'Approved by Accounts',
+                    isActive: true
+                })
             });
 
             if (res.ok) {

@@ -182,6 +182,8 @@ function App() {
                         <Route path="/studentapplicant" element={<ApplicationsPage />} />
                         <Route path="/branch" element={<StudyCenterPage />} />
                         <Route path="/studycenter" element={<StudyCenterPage />} />
+                        <Route path="/studycenter/new" element={<GenericNew doctype="studycenter" />} />
+                        <Route path="/studycenter/:id" element={<GenericEdit doctype="studycenter" />} />
                         <Route path="/student" element={<StudentRecordsPage />} />
                         <Route path="/student/new" element={<GenericNew doctype="student" />} />
                         <Route path="/student/:id" element={<StudentDetailsPage />} />

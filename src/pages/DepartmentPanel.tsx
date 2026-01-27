@@ -121,8 +121,12 @@ export default function DepartmentPanel() {
         shortcuts.push({ label: 'Post Announcement', href: '/announcement/new' });
     }
     if (hasFeature('Employee Complaints')) {
-        masterCards.push({ label: 'Complaints', count: '', icon: Megaphone, href: '/complaint', color: 'bg-red-50 text-red-600' });
-        shortcuts.push({ label: 'Manage Complaints', href: '/complaint' });
+        // Only HR should manage complaints from the Department Panel
+        const isHR = dept.panelType === 'HR' || /^(Human Resources|HR)$/i.test(dept.name);
+        if (isHR) {
+            masterCards.push({ label: 'Complaints', count: '', icon: Megaphone, href: '/complaint', color: 'bg-red-50 text-red-600' });
+            shortcuts.push({ label: 'Manage Complaints', href: '/complaint' });
+        }
     }
     if (hasFeature('Performance')) {
         masterCards.push({ label: 'Performance', count: '', icon: TrendingUp, href: '/performancereview', color: 'bg-indigo-50 text-indigo-600' });

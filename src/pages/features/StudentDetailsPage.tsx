@@ -34,10 +34,14 @@ export default function StudentDetailsPage() {
         if (!confirm(message)) return;
         setActionLoading(true);
         try {
+            const body: any = { verificationStatus: status };
+            if (status === 'Approved by Accounts') body.isActive = true;
+            if (status === 'Verified by Ops') body.isActive = false;
+
             const res = await fetch(`/api/resource/student/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ verificationStatus: status })
+                body: JSON.stringify(body)
             });
             if (res.ok) {
                 const json = await res.json();
@@ -93,13 +97,13 @@ export default function StudentDetailsPage() {
 
                         {/* Workflow Actions */}
                         <div className="flex items-center gap-3">
-                            {isOps && (student.verificationStatus === 'Pending' || student.verificationStatus === 'Processing') && (
+                            {isOps && (!student.verificationStatus || student.verificationStatus === 'Pending' || student.verificationStatus === 'Processing') && (
                                 <button
                                     onClick={() => handleAction('Verified by Ops', 'Approve and verify this student record for Finance?')}
                                     disabled={actionLoading}
                                     className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-black shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2 disabled:opacity-50"
                                 >
-                                    <Check size={18} /> Verify Record
+                                    <Check size={18} /> Approve Record
                                 </button>
                             )}
                             {isFinance && student.verificationStatus === 'Verified by Ops' && (

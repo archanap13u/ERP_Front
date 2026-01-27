@@ -256,7 +256,7 @@ export default function ApplicationPanel({ departmentId, organizationId: propOrg
                                                     className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-black hover:bg-emerald-700 shadow-md shadow-emerald-100 transition-all active:scale-95 flex items-center gap-1.5"
                                                 >
                                                     {actionLoading === app._id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                                                    Verify
+                                                    Approve
                                                 </button>
                                             )}
                                             <Link

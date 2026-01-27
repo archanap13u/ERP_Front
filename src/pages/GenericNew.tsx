@@ -48,7 +48,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             const updated = { ...prev };
             if (orgId) updated.organizationId = orgId;
 
-            const isDepartmental = ['holiday', 'complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark'].includes(doctype || '');
+            const isDepartmental = ['complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark'].includes(doctype || '');
 
             if (isDepartmental) {
                 if (storedDeptId) updated.departmentId = storedDeptId;
@@ -119,7 +119,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                         const urlParams = new URLSearchParams(location.search);
                         const studyCenterFilter = urlParams.get('studyCenter') || localStorage.getItem('study_center_name');
 
-                        const isGlobalLink = ['studycenter', 'university', 'program', 'department', 'designation', 'student'].includes(field.link.toLowerCase());
+                        const isGlobalLink = ['studycenter', 'university', 'program', 'department', 'designation', 'student'].includes(field.link.toLowerCase()) || field.name === 'department' || field.name === 'targetDepartment';
 
                         if (!isGlobalLink) {
                             if (deptId) url += `&departmentId=${deptId}`;
@@ -132,15 +132,26 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
 
                         const res = await fetch(url);
                         const json = await res.json();
+                        console.log(`[GenericNew] Fetched ${field.link}:`, json.data?.length);
+
                         options[field.name] = (json.data || []).map((item: any) => {
-                            // Academic items should use Name as value to match model and URL pre-fill
-                            const isAcademic = ['studycenter', 'university', 'program'].includes(field.link!.toLowerCase());
+                            const linkLower = field.link!.toLowerCase();
+                            // Academic items should use Name as value
+                            const isAcademic = ['studycenter', 'university', 'program', 'department'].includes(linkLower);
+
+                            // Department specific mapping for robustness
+                            if (linkLower === 'department') {
+                                const name = item.name || item.panelType || item.title || item._id;
+                                const label = item.panelType || item.name || item.title || item._id;
+                                return { label: label, value: name, id: item._id };
+                            }
+
                             const nameVal = item.centerName || item.universityName || item.programName || item.name || item.title;
 
                             return {
                                 label: nameVal || item.employeeName || item.studentName || item.job_title || item._id,
                                 value: isAcademic ? (nameVal || item._id) : (field.link === 'designation' ? item.title : (item._id || item.name)),
-                                id: item._id // Store ID for lookup
+                                id: item._id
                             };
                         });
 
@@ -157,9 +168,9 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             }
                         }
 
-                        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetCenter')) {
+                        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetDepartment' || field.name === 'targetCenter')) {
                             options[field.name].unshift({ label: 'None', value: 'None' });
-                            if (field.name === 'department') {
+                            if (field.name === 'department' || field.name === 'targetDepartment') {
                                 options[field.name].unshift({ label: 'All', value: 'All' });
                             }
                         }
@@ -184,7 +195,33 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             }
         };
 
+        const fetchCurrentEmployeeDetails = async () => {
+            const empId = localStorage.getItem('employee_id');
+            if (doctype === 'complaint' && empId) {
+                try {
+                    console.log(`[GenericNew] Fetching fresh details for employee ${empId}...`);
+                    // We need to query by employeeId field, not _id, so use list with filter
+                    const res = await fetch(`/api/resource/employee?employeeId=${empId}&organizationId=${orgId}`);
+                    const json = await res.json();
+                    if (json.data && json.data.length > 0) {
+                        const employee = json.data[0];
+                        console.log('[GenericNew] Fetched employee details:', employee);
+                        setFormData((prev: any) => ({
+                            ...prev,
+                            department: employee.department,
+                            departmentId: employee.departmentId,
+                            employeeName: employee.employeeName,
+                            employeeId: employee.employeeId
+                        }));
+                    }
+                } catch (e) {
+                    console.error('[GenericNew] Failed to fetch employee details', e);
+                }
+            }
+        };
+
         fetchDynamicOptions();
+        fetchCurrentEmployeeDetails();
     }, [doctype, fields, location.search]);
 
     const handleSave = async () => {
@@ -260,6 +297,52 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             currentData.studyCenterId = urlCenterId;
         }
 
+        if (doctype === 'complaint') {
+            const storedEmpId = localStorage.getItem('employee_id');
+            // If no employee ID, check if we have a qualified user (e.g. Dept Admin)
+            if (!storedEmpId && !currentData.employeeId) {
+                const storedName = localStorage.getItem('user_name'); // e.g. "Operations"
+                if (storedName) {
+                    currentData.username = storedName;
+                    currentData.employeeName = storedName;
+                }
+            } else if (!currentData.employeeId) {
+                currentData.employeeId = storedEmpId;
+                currentData.employeeName = localStorage.getItem('user_name');
+            }
+
+            currentData.department = localStorage.getItem('department_name') || 'General';
+            currentData.departmentId = localStorage.getItem('department_id');
+
+            // Fallback for Dept Admins who have organizationId but maybe no Department ID explicitly set
+            if (!currentData.departmentId && currentData.organizationId) {
+                console.warn('[GenericNew] Missing DepartmentID for Complaint. Using OrganizationID as placeholder.');
+                currentData.departmentId = currentData.organizationId;
+            }
+
+            console.log('[GenericNew] Auto-populated Complaint fields:', {
+                empId: currentData.employeeId,
+                username: currentData.username, // Log username
+                dept: currentData.department,
+                deptId: currentData.departmentId
+            });
+        }
+
+        if (doctype === 'holiday') {
+            // Default to user's department, but allow clearing it for global
+            // If the user matches HR pattern, they might want to set it to 'Human Resources' or leave blank for Global
+            const myDept = localStorage.getItem('department_name');
+            const myDeptId = localStorage.getItem('department_id');
+
+            // Only set if not already set (though this is init, so it's empty)
+            if (!currentData.department && myDept) {
+                currentData.department = myDept;
+            }
+            if (!currentData.departmentId && myDeptId) {
+                currentData.departmentId = myDeptId;
+            }
+        }
+
 
         // Validation against the enriched currentData
         const requiredFields = fields.filter(f => f.required);
@@ -286,8 +369,13 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             }
         }
 
-        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (payload.department === 'All' || payload.department === 'None')) {
+        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (payload.targetDepartment === 'All' || payload.targetDepartment === 'None')) {
             payload.departmentId = null;
+        }
+
+        if (doctype === 'student' && !payload.verificationStatus) {
+            payload.verificationStatus = 'Pending';
+            payload.isActive = false;
         }
 
         setSaving(true);
@@ -401,6 +489,11 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             <div className="p-8 bg-white space-y-8 border border-[#d1d8dd] rounded-lg shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     {fields.map((field, idx) => {
+                        // Skip hidden fields - they won't be rendered but will be in formData
+                        if (field.type === 'hidden') {
+                            return null;
+                        }
+
                         // Conditional visibility for Poll Options
                         if ((doctype === 'announcement' || doctype === 'opsannouncement') && field.name === 'poll_options_text' && formData.type !== 'Poll') {
                             return null;
@@ -421,7 +514,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                         }
 
                         // Hide Target Study Center for HR announcements
-                        if (doctype === 'announcement' && field.name === 'targetCenter' && formData.department === 'Human Resources') {
+                        if (doctype === 'announcement' && field.name === 'targetStudyCenter' && formData.department === 'Human Resources') {
                             return null;
                         }
 
@@ -542,10 +635,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                         }}
                                     >
                                         <option value="">Select...</option>
-                                        {/* Special All Option for Announcement Department */}
-                                        {doctype === 'announcement' && field.name === 'department' && (
-                                            <option value="All">All Departments</option>
-                                        )}
+                                        {/* Special All Option for Announcement Department handled by unshift in useEffect */}
                                         {field.options && field.options.map((opt: string) => (
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}
@@ -597,6 +687,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                         placeholder={field.placeholder || ''}
                                         className="w-full bg-[#f0f4f7] border border-[#d1d8dd] rounded px-3 py-1.5 text-[13px] focus:bg-white focus:border-blue-400 outline-none transition-all"
                                         value={formData[field.name] || ''}
+                                        readOnly={doctype === 'complaint' && field.name === 'employeeName'}
                                         onChange={(e) => {
                                             const val = e.target.value;
                                             setFormData((prev: any) => ({ ...prev, [field.name]: val }));

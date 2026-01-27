@@ -18,12 +18,13 @@ export default function ProgramsPage() {
             const deptId = localStorage.getItem('department_id');
 
             let queryParams = `?organizationId=${orgId || ''}`;
-            if (deptId) {
-                queryParams += `&departmentId=${deptId}`;
-            }
+            // Programs are organization-wide, not department-specific
+            // Do NOT filter by departmentId
 
+            console.log('[ProgramsPage] Fetching programs with query:', queryParams);
             const res = await fetch(`/api/resource/program${queryParams}`);
             const json = await res.json();
+            console.log('[ProgramsPage] Received programs:', json.data?.length || 0, 'programs');
             const data = json.data || [];
 
             setCounts({
@@ -34,8 +35,10 @@ export default function ProgramsPage() {
             setPrograms(data);
 
         } catch (e) {
-            console.error(e);
+            console.error('[ProgramsPage] Error fetching programs:', e);
+            alert('Failed to load programs. Please check your connection and try refreshing the page.');
         } finally {
+            console.log('[ProgramsPage] Fetch complete, setting loading to false');
             setLoading(false);
         }
     };
@@ -93,8 +96,8 @@ export default function ProgramsPage() {
                             key={type}
                             onClick={() => setFilterType(type as any)}
                             className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all ${filterType === type
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-400 hover:text-blue-600'
                                 }`}
                         >
                             {type}
