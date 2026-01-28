@@ -179,7 +179,7 @@ export default function Sidebar() {
         { icon: BadgeDollarSign, label: 'Assets', href: '/asset', roles: ['Assets'], feature: 'Asset Tracking' },
 
         // Shared
-        { icon: Bell, label: 'Notifications', href: '/notifications', roles: ['Employee', 'DepartmentAdmin', 'HR', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets', 'StudyCenter', 'OrganizationAdmin', 'Student'] },
+        { icon: Bell, label: 'Notifications', href: '/notifications', roles: ['Employee', 'DepartmentAdmin', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets', 'StudyCenter', 'OrganizationAdmin', 'Student'] },
     ];
 
     // Total hard sandbox for employees
