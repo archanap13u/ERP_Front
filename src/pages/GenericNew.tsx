@@ -66,9 +66,15 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
 
             if (doctype === 'complaint' || doctype === 'leaverequest') {
                 const storedEmpId = localStorage.getItem('employee_id');
+                const storedUserId = localStorage.getItem('user_id');
                 const storedEmpName = localStorage.getItem('user_name');
+                const storedRole = localStorage.getItem('user_role');
+
                 if (storedEmpId) updated.employeeId = storedEmpId;
+                else if (storedUserId) updated.employeeId = storedUserId;
+
                 if (storedEmpName) updated.employeeName = storedEmpName;
+                else if (storedRole) updated.employeeName = storedRole;
             }
 
             // Merge URL Query Parameters
@@ -370,13 +376,19 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
         }
 
         if (doctype === 'leaverequest') {
-            const myEmpId = localStorage.getItem('employee_id');
-            const myName = localStorage.getItem('user_name');
+            const storedEmpId = localStorage.getItem('employee_id');
+            const storedUserId = localStorage.getItem('user_id');
+            const storedUserName = localStorage.getItem('user_name');
+            const storedRole = localStorage.getItem('user_role');
             const myDept = localStorage.getItem('department_name');
             const myDeptId = localStorage.getItem('department_id');
 
-            if (myEmpId) currentData.employeeId = myEmpId;
-            if (myName) currentData.employeeName = myName;
+            if (storedEmpId) currentData.employeeId = storedEmpId;
+            else if (storedUserId) currentData.employeeId = storedUserId;
+
+            if (storedUserName) currentData.employeeName = storedUserName;
+            else if (storedRole) currentData.employeeName = storedRole;
+
             if (myDept) currentData.department = myDept;
             if (myDeptId) currentData.departmentId = myDeptId;
 
