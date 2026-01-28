@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { GraduationCap, BookOpen, Users, ArrowRight, Building, Plus, MapPin, Award } from 'lucide-react';
+import { GraduationCap, BookOpen, Users, ArrowRight, Building, Plus, MapPin, Award, Trash2 } from 'lucide-react';
 import Workspace from '../../components/Workspace';
 import { Link } from 'react-router-dom';
 
@@ -7,6 +7,33 @@ export default function UniversityPage() {
     const [counts, setCounts] = useState<{ [key: string]: number }>({});
     const [universities, setUniversities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to delete university: ${name}?`)) return;
+
+        try {
+            const orgId = localStorage.getItem('organization_id');
+            const res = await fetch(`/api/resource/university/${id}?organizationId=${orgId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                setUniversities(prev => prev.filter(u => u._id !== id));
+                setCounts(prev => ({
+                    ...prev,
+                    total: (prev.total || 0) - 1,
+                    active: universities.find(u => u._id === id)?.enabled ? (prev.active || 0) - 1 : (prev.active || 0)
+                }));
+            } else {
+                const err = await res.json();
+                alert(`Failed to delete: ${err.error || 'Unknown error'}`);
+            }
+        } catch (err) {
+            console.error('Error deleting university:', err);
+            alert('Failed to connect to server');
+        }
+    };
 
     useEffect(() => {
         async function fetchData() {
@@ -100,6 +127,16 @@ export default function UniversityPage() {
                                             <Building size={64} />
                                         </div>
                                     )}
+
+                                    {/* Delete Button - Visible on Hover */}
+                                    <button
+                                        onClick={(e) => handleDelete(e, uni._id, uni.universityName)}
+                                        className="absolute top-3 right-3 p-2 bg-white/90 text-gray-400 hover:text-red-600 rounded-lg shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 border border-gray-100"
+                                        title="Delete University"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+
                                     {/* Logo Overlay */}
                                     <div className="absolute -bottom-8 left-6">
                                         <div className="w-16 h-16 rounded-xl bg-white p-1 shadow-md border border-gray-100">
