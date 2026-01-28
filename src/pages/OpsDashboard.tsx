@@ -148,7 +148,7 @@ export default function OpsDashboard() {
         { icon: BookOpen, label: 'Programs', count: '', href: '/program', feature: 'Programs' },
         { icon: ClipboardList, label: 'APPLICATIONS', count: '', href: '/studentapplicant', feature: 'APPLICATIONS' },
         { icon: GraduationCap, label: 'STUDENTS', count: '', href: '/student', feature: 'STUDENTS' },
-        { icon: Megaphone, label: 'Ops Announcements', count: '', href: `/opsannouncement?department=${encodeURIComponent(contextData.name || 'Operations')}&departmentId=${contextData.id || ''}`, feature: 'Announcements' },
+        { icon: Megaphone, label: 'Ops Announcements', count: '', href: `/opsannouncement?department=${encodeURIComponent(contextData.name || 'Operations')}&departmentId=${contextData.id || ''}`, feature: 'Ops Announcements' },
     ];
 
     const allShortcuts = [
@@ -156,7 +156,6 @@ export default function OpsDashboard() {
         { label: 'Add University', href: '/university/new', feature: 'University' },
         { label: 'Add Program', href: '/program/new', feature: 'Programs' },
         { label: 'Add Study Center', href: '/studycenter/new', feature: 'Study Center' },
-        { label: 'Post Announcement', href: `/opsannouncement/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}`, feature: 'Announcements' },
         { label: 'Assign Task', href: `/task/new?departmentId=${contextData.id}&department=${encodeURIComponent(contextData.name || '')}`, feature: 'Tasks' },
         { label: 'Login Portal URL', href: '/login', feature: 'Study Center' },
     ];
