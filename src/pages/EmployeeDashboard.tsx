@@ -113,7 +113,14 @@ export default function EmployeeDashboard() {
                 setAnnouncements(validAnnouncements);
                 setHolidays(jsonHol.data || []);
                 setComplaints(safeComplaints); // Use the filtered list
-                setTasks(jsonTask.data || []);
+
+                // Client-Side Double Check for Tasks: Ensure only personal tasks are shown in the Staff Portal
+                // Even for Admins who might have broader API access, this view should stay personal.
+                const allTasks = jsonTask.data || [];
+                const personalTasks = allTasks.filter((t: any) => {
+                    return t.assignedTo === mongoId || t.assignedTo === storedId || t.assignedToName === storedName;
+                });
+                setTasks(personalTasks);
             } catch (e) {
                 console.error(e);
             } finally {

@@ -519,6 +519,30 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                 </div>
             </div>
 
+            {/* Admin Task Assignee Info Banner */}
+            {doctype === 'task' && ['DepartmentAdmin', 'HR', 'Operations', 'Finance', 'SuperAdmin', 'OrganizationAdmin'].includes(localStorage.getItem('user_role') || '') && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                            <User size={24} />
+                        </div>
+                        <div>
+                            <p className="text-[11px] text-blue-600 uppercase font-black tracking-widest">Assigned To</p>
+                            <h3 className="text-lg font-bold text-gray-800">{formData.assignedToName || 'Not Assigned'}</h3>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[11px] text-gray-500 uppercase font-bold">Priority</p>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${formData.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-100' :
+                                formData.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                    'bg-blue-50 text-blue-700 border-blue-100'
+                            }`}>
+                            {formData.priority || 'Medium'}
+                        </span>
+                    </div>
+                </div>
+            )}
+
 
 
             {/* LEAVE REQUEST APPROVAL WORKFLOW UI */}

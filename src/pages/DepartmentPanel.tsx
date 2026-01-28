@@ -20,6 +20,7 @@ export default function DepartmentPanel() {
     const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
     const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
     const [employeeSearch, setEmployeeSearch] = useState('');
+    const [taskEmployeeFilter, setTaskEmployeeFilter] = useState('All');
     const [showCustomizer, setShowCustomizer] = useState(false);
     const navigate = useNavigate();
 
@@ -398,6 +399,19 @@ export default function DepartmentPanel() {
                                     Task Management
                                 </h3>
                                 <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Users size={16} className="text-gray-400" />
+                                        <select
+                                            className="bg-gray-50 border border-[#d1d8dd] rounded-lg px-3 py-1.5 text-[12px] font-bold text-gray-700 outline-none focus:border-blue-400 transition-all"
+                                            value={taskEmployeeFilter}
+                                            onChange={(e) => setTaskEmployeeFilter(e.target.value)}
+                                        >
+                                            <option value="All">All Employees</option>
+                                            {employees.map(emp => (
+                                                <option key={emp._id} value={emp.employeeName}>{emp.employeeName}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <Link to="/task" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
                                         View All Tasks <ArrowRight size={14} />
                                     </Link>
@@ -423,44 +437,46 @@ export default function DepartmentPanel() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {tasks.slice(0, 10).map((task, idx) => (
-                                            <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
-                                                <td className="px-4 py-3">
-                                                    <div>
-                                                        <p className="text-[13px] font-bold text-gray-700">{task.subject}</p>
-                                                        <p className="text-[11px] text-gray-500 line-clamp-1">{task.description || 'No description'}</p>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-500">
-                                                            {task.assignedToName?.charAt(0) || '?'}
+                                        {tasks
+                                            .filter(task => taskEmployeeFilter === 'All' || task.assignedToName === taskEmployeeFilter)
+                                            .slice(0, 10).map((task, idx) => (
+                                                <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                                    <td className="px-4 py-3">
+                                                        <div>
+                                                            <p className="text-[13px] font-bold text-gray-700">{task.subject}</p>
+                                                            <p className="text-[11px] text-gray-500 line-clamp-1">{task.description || 'No description'}</p>
                                                         </div>
-                                                        <span className="text-[12px] text-gray-600">{task.assignedToName || 'Unassigned'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${task.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-100' :
-                                                        task.status === 'Working' || task.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                            task.status === 'Pending Review' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                                                task.status === 'Overdue' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                                    'bg-yellow-50 text-yellow-700 border-yellow-100'
-                                                        }`}>
-                                                        {task.status || 'Open'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`text-[11px] font-bold ${task.priority === 'High' || task.priority === 'Urgent' ? 'text-red-600' : 'text-gray-500'}`}>
-                                                        {task.priority}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <Link to={`/task/${task._id}/edit`} className="text-gray-400 hover:text-blue-600 transition-colors">
-                                                        <Edit size={14} />
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-500">
+                                                                {task.assignedToName?.charAt(0) || '?'}
+                                                            </div>
+                                                            <span className="text-[12px] text-gray-600">{task.assignedToName || 'Unassigned'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${task.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                            task.status === 'Working' || task.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                                task.status === 'Pending Review' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                                                    task.status === 'Overdue' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                                        'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                                            }`}>
+                                                            {task.status || 'Open'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`text-[11px] font-bold ${task.priority === 'High' || task.priority === 'Urgent' ? 'text-red-600' : 'text-gray-500'}`}>
+                                                            {task.priority}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <Link to={`/task/${task._id}/edit`} className="text-gray-400 hover:text-blue-600 transition-colors">
+                                                            <Edit size={14} />
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                                 {tasks.length === 0 && (

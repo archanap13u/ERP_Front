@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Plus, Search, Filter, MoreHorizontal, ArrowLeft, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, ArrowLeft, Trash2, Users } from 'lucide-react';
 import { fieldRegistry } from '../config/fields';
 
 interface GenericListProps {
@@ -11,6 +11,9 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
     const params = useParams();
     const doctype = propDoctype || params.doctype;
     const navigate = useNavigate();
+    const [filterStatus, setFilterStatus] = useState('All');
+    const [taskEmployeeFilter, setTaskEmployeeFilter] = useState('All');
+    const [employees, setEmployees] = useState<any[]>([]);
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [hiredCounts, setHiredCounts] = useState<Record<string, number>>({});
@@ -19,8 +22,6 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
     const [searchTerm, setSearchTerm] = useState('');
     const userRole = localStorage.getItem('user_role');
     const deptName = localStorage.getItem('department_name');
-
-    const [filterStatus, setFilterStatus] = useState<string>('All');
 
     const displayTitle = (doctype as string || '').replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 
@@ -150,6 +151,12 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                     }
                     setHiredCounts(counts);
                 }
+
+                if (doctype === 'task') {
+                    const resEmp = await fetch(`/api/resource/employee?organizationId=${orgId}`);
+                    const jsonEmp = await resEmp.json();
+                    setEmployees(jsonEmp.data || []);
+                }
             } catch (err) {
                 console.error('Fetch error:', err);
             } finally {
@@ -225,6 +232,21 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                             className="w-full pl-9 pr-4 py-1.5 bg-white border border-[#d1d8dd] rounded text-[13px] focus:outline-none focus:border-blue-400 font-medium"
                         />
                     </div>
+                    {doctype === 'task' && (
+                        <div className="flex items-center gap-2">
+                            <Users size={14} className="text-gray-400" />
+                            <select
+                                className="bg-white border border-[#d1d8dd] rounded px-3 py-1.5 text-[12px] font-bold text-gray-700 outline-none focus:border-blue-400"
+                                value={taskEmployeeFilter}
+                                onChange={(e) => setTaskEmployeeFilter(e.target.value)}
+                            >
+                                <option value="All">All Employees</option>
+                                {employees.map(emp => (
+                                    <option key={emp._id} value={emp.employeeName}>{emp.employeeName}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <button className="flex items-center gap-2 text-[13px] text-[#626161] hover:text-blue-600 font-medium px-2 py-1">
                         <Filter size={14} />
                         Filter
@@ -247,6 +269,8 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                 {doctype === 'jobopening' && <th className="px-4 py-2">Remaining</th>}
                                 {(doctype === 'announcement' || doctype === 'opsannouncement') && <th className="px-4 py-2">Target Center</th>}
                                 {doctype === 'announcement' && <th className="px-4 py-2">Department</th>}
+                                {doctype === 'task' && <th className="px-4 py-2">Assigned To</th>}
+                                {doctype === 'task' && <th className="px-4 py-2">Priority</th>}
                                 {doctype === 'complaint' && <th className="px-4 py-2">Filed By</th>}
                                 <th className="px-4 py-2">Status</th>
                                 <th className="px-4 py-2">Last Modified</th>
@@ -263,6 +287,10 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                     .filter(item => {
                                         if (doctype !== 'student' || filterStatus === 'All') return true;
                                         return item.verificationStatus === filterStatus;
+                                    })
+                                    .filter(item => {
+                                        if (doctype !== 'task' || taskEmployeeFilter === 'All') return true;
+                                        return item.assignedToName === taskEmployeeFilter;
                                     })
                                     .filter(item => {
                                         if (!searchTerm) return true;
@@ -343,6 +371,26 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                             {doctype === 'complaint' && (
                                                 <td className="px-4 py-3 text-[#1d2129]">
                                                     {item.employeeName || item.employeeId || 'Anonymous'}
+                                                </td>
+                                            )}
+                                            {doctype === 'task' && (
+                                                <td className="px-4 py-3 text-[#1d2129]">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-[10px] font-bold uppercase">
+                                                            {item.assignedToName?.charAt(0) || '?'}
+                                                        </div>
+                                                        <span className="font-bold">{item.assignedToName || 'Unassigned'}</span>
+                                                    </div>
+                                                </td>
+                                            )}
+                                            {doctype === 'task' && (
+                                                <td className="px-4 py-3 text-[#1d2129]">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                        item.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                                            'bg-blue-50 text-blue-700 border-blue-100'
+                                                        }`}>
+                                                        {item.priority || 'Medium'}
+                                                    </span>
                                                 </td>
                                             )}
                                             <td className="px-4 py-3">
