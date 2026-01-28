@@ -153,7 +153,6 @@ function App() {
                         <Route path="/shift-assignment" element={<ShiftManagementPage />} />
                         <Route path="/holiday-list" element={<HolidaysPage />} />
                         <Route path="/announcement" element={<AnnouncementsPage />} />
-                        <Route path="/opsannouncement" element={<AnnouncementsPage doctype="opsannouncement" />} />
                         <Route path="/notifications" element={<NotificationsPage />} />
                         <Route path="/department-reports" element={<DepartmentReportsPage />} />
                         <Route path="/department-reports/:id" element={<DepartmentReportDetail />} />
