@@ -109,11 +109,8 @@ export default function HRDashboard() {
 
                 // Filter Leave Requests for "Pending HR"
                 const allLeaves = jsonLeave.data || [];
-                console.log('[HRDashboard] All Fetched Leaves:', allLeaves);
                 const pendingHRLeaves = allLeaves.filter((l: any) => l.status === 'Pending HR');
                 const approved = allLeaves.filter((l: any) => l.status === 'Approved');
-                console.log('[HRDashboard] Pending HR Leaves:', pendingHRLeaves);
-                console.log('[HRDashboard] Approved Leaves:', approved);
                 setLeaveRequests(pendingHRLeaves);
                 setApprovedLeaves(approved);
 
@@ -343,18 +340,6 @@ export default function HRDashboard() {
 
             </div>
 
-            {/* LEAVE REQUEST DEBUG SECTION */}
-            <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 mb-8 text-xs font-mono overflow-auto max-h-48">
-                <p className="font-bold text-yellow-800">DEBUG: All Fetched Leaves (Status Check)</p>
-                <div className="whitespace-pre">
-                    {JSON.stringify(leaveRequests.map(l => ({
-                        id: l._id,
-                        emp: l.employeeName,
-                        dept: l.department,
-                        status: l.status
-                    })), null, 2)}
-                </div>
-            </div>
 
             {/* Leave Requests Section - HR Approval - Always Visible */}
             <div className="bg-white p-8 rounded-2xl border border-[#d1d8dd] shadow-sm mb-8">
