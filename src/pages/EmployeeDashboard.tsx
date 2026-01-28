@@ -217,7 +217,10 @@ export default function EmployeeDashboard() {
                                 <p className="text-[11px] text-gray-500 font-medium">Submit your daily entry</p>
                             </div>
                         </button>
-                        <button className="p-4 bg-white border border-[#d1d8dd] rounded-2xl flex items-center gap-4 hover:shadow-md hover:border-blue-400 transition-all text-left group">
+                        <button
+                            onClick={() => window.location.href = '/leaverequest/new'}
+                            className="p-4 bg-white border border-[#d1d8dd] rounded-2xl flex items-center gap-4 hover:shadow-md hover:border-blue-400 transition-all text-left group"
+                        >
                             <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <Calendar size={20} />
                             </div>
@@ -250,7 +253,14 @@ export default function EmployeeDashboard() {
                                 </div>
                             ) : (
                                 tasks.slice(0, 5).map((task, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50/50 rounded-xl border border-transparent hover:border-rose-100 hover:bg-white transition-all cursor-pointer" onClick={() => window.location.href = `/task/${task._id}`}>
+                                    <div
+                                        key={idx}
+                                        className={`flex items-center gap-3 p-3 rounded-xl border border-transparent transition-all cursor-pointer ${task.verificationStatus === 'Rejected' ? 'bg-red-50 hover:bg-red-100 hover:border-red-200' :
+                                            task.verificationStatus === 'Approved' ? 'bg-green-50 hover:bg-green-100 hover:border-green-200' :
+                                                'bg-gray-50/50 hover:bg-white hover:border-rose-100'
+                                            }`}
+                                        onClick={() => window.location.href = `/task/${task._id}`}
+                                    >
                                         <div className={`w-2 h-10 rounded-full shrink-0 ${task.priority === 'Urgent' || task.priority === 'High' ? 'bg-red-500' : 'bg-gray-300'}`}></div>
                                         <div className="min-w-0 flex-1">
                                             <h4 className="text-[13px] font-bold text-gray-800 truncate">{task.subject}</h4>

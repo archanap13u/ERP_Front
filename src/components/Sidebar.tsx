@@ -168,6 +168,9 @@ export default function Sidebar() {
         { icon: ClipboardList, label: 'Tasks', href: '/task', roles: ['Projects', 'HR', 'Operations', 'Finance', 'DepartmentAdmin', 'Employee'], feature: 'Tasks' },
         { icon: CalendarDays, label: 'Timesheets', href: '/timesheet', roles: ['Projects'], feature: 'Timesheets' },
 
+        // HR & Management (Universal)
+        { icon: CalendarDays, label: 'Leave Requests', href: '/leaverequest', roles: ['DepartmentAdmin', 'HR', 'Operations', 'SuperAdmin', 'OrganizationAdmin', 'Finance', 'Inventory', 'CRM', 'Support', 'Assets', 'Projects', 'HeadOfDepartment', 'HumanResources'] },
+
         // Support
         { icon: Shield, label: 'Tickets', href: '/ticket', roles: ['Support'], feature: 'Tickets' },
         { icon: Activity, label: 'Issues', href: '/issue', roles: ['Support'], feature: 'Issues' },
@@ -183,8 +186,11 @@ export default function Sidebar() {
     if (role === 'Employee') {
         const staffPortal = allMenuItems.find(i => i.label === 'Staff Portal');
         const notifications = allMenuItems.find(i => i.label === 'Notifications');
+        // Manually adding Leave Request link for Employees since it might not be in the filtered list yet
+        const leaveRequests = { icon: CalendarDays, label: 'My Leave Requests', href: '/leaverequest', roles: ['Employee'] };
         const items = [];
         if (staffPortal) items.push(staffPortal);
+        items.push(leaveRequests);
         if (notifications) items.push(notifications);
 
         return (
@@ -230,7 +236,7 @@ export default function Sidebar() {
         // --- STRICT STAFF ISOLATION ---
         // If the user is a standard Employee, they MUST ONLY see their Portal and Notifications.
         if (role === 'Employee') {
-            const staffWhitelist = ['Staff Portal', 'Notifications', 'Tasks'];
+            const staffWhitelist = ['Staff Portal', 'Notifications', 'Tasks', 'My Leave Requests'];
             return staffWhitelist.includes(item.label) && roleAllowed;
         }
 
@@ -239,8 +245,11 @@ export default function Sidebar() {
         // 2. Strict Feature Check for Department Admin/Customized Panels
         // EXCEPTION: Standard Employees should NOT inherit their department's admin features
         if ((role === 'DepartmentAdmin' || (deptFeatures && deptFeatures.length > 0)) && role !== 'Employee') {
-            // Always show basic navigation items (Dashboard, Notifications)
-            if (!item.feature) return roleAllowed;
+            // Always show basic navigation items (Dashboard, Notifications, Task Management)
+            const alwaysShowForDeptAdmin = ['Task Management', 'Tasks', 'Leave Requests'];
+            if (!item.feature || (role === 'DepartmentAdmin' && alwaysShowForDeptAdmin.includes(item.label || ''))) {
+                return roleAllowed;
+            }
 
             // For other items, strictly check if the feature is in the selected list
             return deptFeatures.includes(item.feature);

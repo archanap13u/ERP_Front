@@ -41,9 +41,11 @@ export default function Navbar() {
 
             <div className="flex items-center gap-2">
                 {role !== 'Employee' && role !== 'Student' && (
-                    <button className="p-1.5 hover:bg-[#f0f4f7] rounded transition-colors text-[#626161]">
-                        <Plus size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <a href="/leaverequest" className="p-1.5 hover:bg-[#f0f4f7] rounded transition-colors text-[#626161] flex items-center gap-1" title="Leave Requests">
+                            <Plus size={18} />
+                        </a>
+                    </div>
                 )}
                 <button className="p-1.5 hover:bg-[#f0f4f7] rounded transition-colors text-[#626161]">
                     <HelpCircle size={18} />

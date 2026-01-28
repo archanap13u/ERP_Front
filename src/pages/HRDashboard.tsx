@@ -12,6 +12,8 @@ export default function HRDashboard() {
     const [holidays, setHolidays] = useState<any[]>([]);
     const [announcements, setAnnouncements] = useState<any[]>([]);
     const [polls, setPolls] = useState<any[]>([]);
+    const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+    const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
     const [complaints, setComplaints] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
     const [departments, setDepartments] = useState<any[]>([]);
@@ -65,7 +67,8 @@ export default function HRDashboard() {
                     fetch(`${baseUrl}/announcement${globalParams}${effectiveDeptId ? `&departmentId=${effectiveDeptId}` : ''}`).then(r => r.json()),
                     // Explicitly fetch ALL complaints for the organization, ignoring department context params
                     fetch(`${baseUrl}/complaint?organizationId=${orgId}&view=all`).then(r => r.json()),
-                    fetch(`${baseUrl}/task${deptParams}`).then(r => r.json())
+                    fetch(`${baseUrl}/task${deptParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/leaverequest${globalParams}`).then(r => r.json())
                 ];
 
                 // Also fetch features live if we have a dept context
@@ -80,12 +83,16 @@ export default function HRDashboard() {
                 const jsonHol = results[2];
                 const jsonAnn = results[3];
                 const jsonComp = results[4];
-                const jsonFeat = results[5];
+                const jsonFeat = results[5]; // Wait, index 5 is task
+                const jsonTask = results[5];
+                const jsonLeave = results[6];
+                // Features might be index 7 if effectiveDeptId exists
+                const jsonFeatures = effectiveDeptId ? results[7] : null;
 
                 setEmployees((jsonEmp.data || []).sort((a: any, b: any) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 ));
-                const jsonTask = results[5];
+
                 setCounts({
                     employee: jsonEmp.data?.length || 0,
                     attendance: jsonAtt.data?.length || 0,
@@ -93,19 +100,35 @@ export default function HRDashboard() {
                     announcement: jsonAnn.data?.length || 0,
                     complaint: jsonComp.data?.length || 0,
                     task: jsonTask.data?.length || 0,
+                    leave: jsonLeave.data?.length || 0,
                     pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length
                 });
 
                 setHolidays(jsonHol.data?.slice(0, 3) || []);
                 setComplaints(jsonComp.data?.slice(0, 5) || []);
 
+                // Filter Leave Requests for "Pending HR"
+                const allLeaves = jsonLeave.data || [];
+                console.log('[HRDashboard] All Fetched Leaves:', allLeaves);
+                const pendingHRLeaves = allLeaves.filter((l: any) => l.status === 'Pending HR');
+                const approved = allLeaves.filter((l: any) => l.status === 'Approved');
+                console.log('[HRDashboard] Pending HR Leaves:', pendingHRLeaves);
+                console.log('[HRDashboard] Approved Leaves:', approved);
+                setLeaveRequests(pendingHRLeaves);
+                setApprovedLeaves(approved);
+
                 const allAnnouncements = jsonAnn.data || [];
                 setAnnouncements(allAnnouncements.filter((a: any) => a.type !== 'Poll').slice(0, 3));
                 setPolls(allAnnouncements.filter((a: any) => a.type === 'Poll').slice(0, 2));
 
-                if (jsonFeat?.data?.features) {
-                    setFeatures(jsonFeat.data.features);
-                    localStorage.setItem('user_features', JSON.stringify(jsonFeat.data.features));
+                if (jsonFeatures?.data?.features) {
+                    setFeatures(jsonFeatures.data.features);
+                    localStorage.setItem('user_features', JSON.stringify(jsonFeatures.data.features));
+                } else if (jsonFeat?.data?.features && !jsonFeatures) { // fallback (task response doesn't have features, oops logic)
+                    // If features index was messed up let's just ignore or fix logic.
+                    // Original logic had jsonFeat = results[5]. But results[5] is task.
+                    // The last item was features.
+                    // I'll stick to new logic: jsonFeatures
                 }
 
             } catch (e) {
@@ -163,12 +186,14 @@ export default function HRDashboard() {
                     { label: 'Active Staff', value: loading ? '...' : counts.employee || 0, color: 'text-indigo-600', doctype: 'employee' },
                     { label: "Today's Presence", value: loading ? '...' : counts.attendance || 0, color: 'text-emerald-600', doctype: 'attendance' },
                     { label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' },
+                    { label: 'Leave Approvals', value: loading ? '...' : counts.leave || leaveRequests.length, color: 'text-orange-600', doctype: 'leaverequest' },
                 ]}
                 masterCards={[
                     { label: 'Post Vacancy', icon: Building2, count: '', href: '/jobopening', feature: 'Post Vacancy' },
                     { label: 'Employee Transfer', icon: ArrowLeftRight, count: '', href: '/employee-transfer', feature: 'Employee Transfer', color: 'bg-blue-50 text-blue-600' },
                     { label: 'Performance', icon: TrendingUp, count: '', href: '/performancereview', color: 'bg-indigo-50 text-indigo-600' },
                     { label: 'Tasks', icon: ListTodo, count: '', href: '/task', color: 'bg-rose-50 text-rose-600' },
+                    { label: 'Leave Requests', icon: CalendarDays, count: '', href: '/leaverequest', color: 'bg-orange-50 text-orange-600' },
                 ].filter(card => !card.feature || features.includes(card.feature))}
                 shortcuts={[
                     { label: 'Mark Attendance', href: '/attendance/new' },
@@ -313,6 +338,159 @@ export default function HRDashboard() {
                             ))
                         )}
                     </div>
+                </div>
+
+
+            </div>
+
+            {/* LEAVE REQUEST DEBUG SECTION */}
+            <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 mb-8 text-xs font-mono overflow-auto max-h-48">
+                <p className="font-bold text-yellow-800">DEBUG: All Fetched Leaves (Status Check)</p>
+                <div className="whitespace-pre">
+                    {JSON.stringify(leaveRequests.map(l => ({
+                        id: l._id,
+                        emp: l.employeeName,
+                        dept: l.department,
+                        status: l.status
+                    })), null, 2)}
+                </div>
+            </div>
+
+            {/* Leave Requests Section - HR Approval - Always Visible */}
+            <div className="bg-white p-8 rounded-2xl border border-[#d1d8dd] shadow-sm mb-8">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <CheckCircle2 size={20} />
+                        </div>
+                        Leave Approvals Pending
+                        {leaveRequests.length > 0 && (
+                            <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-full">
+                                {leaveRequests.length}
+                            </span>
+                        )}
+                    </h3>
+                    <Link to="/leaverequest" className="text-blue-600 text-[13px] font-medium hover:underline flex items-center gap-1 bg-blue-50 px-3 py-2 rounded-lg">
+                        View All <ArrowRight size={14} />
+                    </Link>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                <th className="px-4 py-3">Employee</th>
+                                <th className="px-4 py-3">Department</th>
+                                <th className="px-4 py-3">Dates</th>
+                                <th className="px-4 py-3">Reason</th>
+                                <th className="px-4 py-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {leaveRequests.length > 0 ? (
+                                leaveRequests.map((leave, idx) => (
+                                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                    {leave.employeeName?.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-[13px] font-bold text-gray-700">{leave.employeeName}</p>
+                                                    <p className="text-[11px] text-gray-500">{leave.employeeId}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-[12px] text-gray-600">{leave.department}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="text-[12px] text-gray-600 font-medium">
+                                                {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                            </div>
+                                            <div className="text-[10px] text-gray-400">{leave.leaveType}</div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <p className="text-[12px] text-gray-600 line-clamp-1">{leave.reason}</p>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <Link to={`/leaverequest/${leave._id}`} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-indigo-700 shadow-sm">
+                                                Review
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-[13px]">
+                                        No pending leave approvals found.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Approved Leave History Section */}
+            <div className="bg-white p-8 rounded-2xl border border-[#d1d8dd] shadow-sm mb-8">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <CheckCircle2 size={20} />
+                        </div>
+                        Approved Leave History
+                        {approvedLeaves.length > 0 && (
+                            <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-bold rounded-full">
+                                {approvedLeaves.length}
+                            </span>
+                        )}
+                    </h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                <th className="px-4 py-3">Employee</th>
+                                <th className="px-4 py-3">Department</th>
+                                <th className="px-4 py-3">Dates</th>
+                                <th className="px-4 py-3">Type</th>
+                                <th className="px-4 py-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {approvedLeaves.length > 0 ? (
+                                approvedLeaves.map((leave, idx) => (
+                                    <tr key={idx} className="hover:bg-green-50/30 transition-colors group">
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                    {leave.employeeName?.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-[13px] font-bold text-gray-700">{leave.employeeName}</p>
+                                                    <p className="text-[11px] text-gray-500">{leave.employeeId}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-[12px] text-gray-600">{leave.department}</td>
+                                        <td className="px-4 py-3 text-[12px] text-gray-600 font-medium">
+                                            {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                        </td>
+                                        <td className="px-4 py-3 text-[12px] text-gray-600">{leave.leaveType}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            <Link to={`/leaverequest/${leave._id}`} className="text-green-600 font-bold text-[11px] hover:underline bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                                                View
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-[13px]">
+                                        No approved leave history found.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

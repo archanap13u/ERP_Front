@@ -15,7 +15,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
     const location = useLocation();
     const [formData, setFormData] = useState<any>({});
     const [saving, setSaving] = useState(false);
-    const [dynamicOptions, setDynamicOptions] = useState<{ [key: string]: { label: string, value: string }[] }>({});
+    const [dynamicOptions, setDynamicOptions] = useState<{ [key: string]: { label: string, value: string, [key: string]: any }[] }>({});
     const [allowedDesignations, setAllowedDesignations] = useState<string[] | null>(null);
 
     const fields = React.useMemo(() => {
@@ -48,7 +48,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             const updated = { ...prev };
             if (orgId) updated.organizationId = orgId;
 
-            const isDepartmental = ['complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark', 'task'].includes(doctype || '');
+            const isDepartmental = ['complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark', 'task', 'leaverequest'].includes(doctype || '');
 
             if (isDepartmental) {
                 if (storedDeptId) updated.departmentId = storedDeptId;
@@ -64,7 +64,7 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                 updated.studyCenter = studyCenterFromStorage;
             }
 
-            if (doctype === 'complaint') {
+            if (doctype === 'complaint' || doctype === 'leaverequest') {
                 const storedEmpId = localStorage.getItem('employee_id');
                 const storedEmpName = localStorage.getItem('user_name');
                 if (storedEmpId) updated.employeeId = storedEmpId;
@@ -152,7 +152,9 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             return {
                                 label: nameVal || item.employeeName || item.studentName || item.job_title || item._id,
                                 value: forceIdValue ? (item._id || item.name) : (isAcademic ? (nameVal || item._id) : (field.link === 'designation' ? item.title : (item._id || item.name))),
-                                id: item._id
+                                id: item._id,
+                                department: item.department,
+                                departmentId: item.departmentId
                             };
                         });
 
@@ -367,6 +369,26 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             }
         }
 
+        if (doctype === 'leaverequest') {
+            const myEmpId = localStorage.getItem('employee_id');
+            const myName = localStorage.getItem('user_name');
+            const myDept = localStorage.getItem('department_name');
+            const myDeptId = localStorage.getItem('department_id');
+
+            if (myEmpId) currentData.employeeId = myEmpId;
+            if (myName) currentData.employeeName = myName;
+            if (myDept) currentData.department = myDept;
+            if (myDeptId) currentData.departmentId = myDeptId;
+
+            // Defaut status is Pending Department
+            currentData.status = 'Pending Department';
+
+            console.log('[GenericNew] Auto-populated Leave Request:', {
+                emp: currentData.employeeName,
+                dept: currentData.department
+            });
+        }
+
 
         // Validation against the enriched currentData
         const requiredFields = fields.filter(f => f.required);
@@ -545,13 +567,23 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             const isAdmin = ['DepartmentAdmin', 'HR', 'Operations', 'Finance', 'SuperAdmin', 'OrganizationAdmin'].includes(userRole || '');
                             const isEmployee = userRole === 'Employee';
 
-                            if (isEmployee && ['verificationStatus', 'adminRemarks'].includes(field.name)) {
-                                (field as any).readOnly = true;
+                            // Hide lifecycle fields during creation
+                            if (['verificationStatus', 'adminRemarks', 'completionEvidence', 'status'].includes(field.name)) {
+                                return null;
+                            }
+
+                            if (isEmployee && ['assignedTo', 'assignedBy', 'priority'].includes(field.name)) {
+                                // Additional logic if needed for creation, but hiding lifecycle fields is key
                             }
                         }
 
                         // Hide Target Study Center for HR announcements
                         if (doctype === 'announcement' && field.name === 'targetStudyCenter' && formData.department === 'Human Resources') {
+                            return null;
+                        }
+
+                        // Hide admin fields for Leave Request creation
+                        if (doctype === 'leaverequest' && ['status', 'deptAdminRemarks', 'hrRemarks'].includes(field.name)) {
                             return null;
                         }
 
@@ -675,6 +707,13 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                                                     );
                                                     if (selectedEmp) {
                                                         newData.assignedToName = selectedEmp.label;
+                                                        // [Fix] Also sync department from the employee
+                                                        // This ensures the task belongs to the assignee's department bucket
+                                                        if (selectedEmp.departmentId) {
+                                                            console.log(`[GenericNew] Syncing Task Department to Assignee's Dept: ${selectedEmp.department} (${selectedEmp.departmentId})`);
+                                                            newData.departmentId = selectedEmp.departmentId;
+                                                            newData.department = selectedEmp.department;
+                                                        }
                                                     }
                                                 }
 

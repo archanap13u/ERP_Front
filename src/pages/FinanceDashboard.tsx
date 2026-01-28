@@ -15,7 +15,8 @@ import {
     Eye,
     Edit,
     Clock,
-    ListTodo
+    ListTodo,
+    CalendarDays
 } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
@@ -27,6 +28,8 @@ export default function FinanceDashboard() {
     const [invoices, setInvoices] = useState<any[]>([]);
     const [pendingStudents, setPendingStudents] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
+    const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+    const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
     const [employeeSearch, setEmployeeSearch] = useState('');
     const [loading, setLoading] = useState(true);
 
@@ -61,17 +64,24 @@ export default function FinanceDashboard() {
                     queryParams += `&departmentId=${deptId || contextData.id}`;
                 }
 
-                const [resInv, resPay, resExp, resLead, resTask] = await Promise.all([
+                const [resInv, resPay, resExp, resLead, resTask, resLeave] = await Promise.all([
                     fetch(`${baseUrl}/salesinvoice${queryParams}`),
                     fetch(`${baseUrl}/paymententry${queryParams}`),
                     fetch(`${baseUrl}/expenseclaim${queryParams}`),
                     fetch(`${baseUrl}/lead${queryParams}`),
-                    fetch(`${baseUrl}/task${queryParams}`)
+                    fetch(`${baseUrl}/task${queryParams}`),
+                    fetch(`${baseUrl}/leaverequest${queryParams}`)
                 ]);
 
-                const [jsonInv, jsonPay, jsonExp, jsonLead, jsonTask] = await Promise.all([
-                    resInv.json(), resPay.json(), resExp.json(), resLead.json(), resTask.json()
+                const [jsonInv, jsonPay, jsonExp, jsonLead, jsonTask, jsonLeave] = await Promise.all([
+                    resInv.json(), resPay.json(), resExp.json(), resLead.json(), resTask.json(), resLeave.json()
                 ]);
+
+                const leaves = jsonLeave.data || [];
+                const pendingLeaves = leaves.filter((l: any) => l.status === 'Pending Department');
+                const approved = leaves.filter((l: any) => l.status === 'Approved');
+                setLeaveRequests(pendingLeaves);
+                setApprovedLeaves(approved);
 
                 setCounts({
                     invoice: jsonInv.data?.length || 0,
@@ -79,7 +89,8 @@ export default function FinanceDashboard() {
                     expense: jsonExp.data?.length || 0,
                     lead: jsonLead.data?.length || 0,
                     task: jsonTask.data?.length || 0,
-                    pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length
+                    pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length,
+                    leave: pendingLeaves.length
                 });
 
                 setInvoices((jsonInv.data || []).slice(0, 5)); // Recent 5
@@ -111,7 +122,7 @@ export default function FinanceDashboard() {
                 summaryItems={[
                     { label: 'Total STUDENTS', value: '', color: 'text-blue-500', doctype: 'student' },
                     { label: 'Received Payments', value: loading ? '...' : counts.payment || 0, color: 'text-emerald-500', doctype: 'paymententry' },
-                    { label: 'Expense Claims', value: loading ? '...' : counts.expense || 0, color: 'text-red-500', doctype: 'expenseclaim' },
+                    { label: 'Pending Leaves', value: loading ? '...' : counts.leave || 0, color: 'text-orange-600', doctype: 'leaverequest' },
                     { label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' },
                 ]}
                 masterCards={[
@@ -125,7 +136,9 @@ export default function FinanceDashboard() {
                     { label: 'Create Invoice', href: `/salesinvoice/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                     { label: 'Record Payment', href: `/paymententry/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                     { label: 'New Expense Claim', href: `/expenseclaim/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
-                    { label: 'Assign Task', href: `/task/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
+                    { label: 'Assign Task', href: `/task/new?departmentId=${contextData.id}&department=${encodeURIComponent(contextData.name || '')}` },
+                    { label: 'New Leave Request', href: `/leaverequest/new?departmentId=${contextData.id}&department=${encodeURIComponent(contextData.name || '')}` },
+                    { label: 'Login Portal URL', href: '/login' },
                     { label: 'Post Announcement', href: `/announcement/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}` },
                 ]}
             />
@@ -226,6 +239,132 @@ export default function FinanceDashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* LEAVE REQUESTS Section - Added for Finance Admin */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                        <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                            <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shadow-sm">
+                                <CalendarDays size={20} />
+                            </div>
+                            Leave Management
+                        </h3>
+                        <Link to="/leaverequest" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
+                            View All Requests <ArrowRight size={14} />
+                        </Link>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                    <th className="px-4 py-3">Employee</th>
+                                    <th className="px-4 py-3">Dates</th>
+                                    <th className="px-4 py-3">Reason</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {leaveRequests.length > 0 ? (
+                                    leaveRequests.map((leave, idx) => (
+                                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                        {leave.employeeName?.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[13px] font-bold text-gray-700">{leave.employeeName}</p>
+                                                        <p className="text-[11px] text-gray-500">{leave.employeeId}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="text-[12px] text-gray-600 font-medium">
+                                                    {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400">{leave.leaveType}</div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <p className="text-[12px] text-gray-600 line-clamp-1">{leave.reason}</p>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${leave.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                    leave.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                        'bg-orange-50 text-orange-700 border-orange-100'
+                                                    }`}>
+                                                    {leave.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <Link to={`/leaverequest/${leave._id}`} className="text-blue-600 font-bold text-[11px] hover:underline bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                                    Review
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-[13px]">
+                                            No pending leave requests found.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* APPROVED LEAVES History Section */}
+                {approvedLeaves.length > 0 && (
+                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                            <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                                <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shadow-sm">
+                                    <CheckCircle2 size={20} />
+                                </div>
+                                Approved Leave History
+                            </h3>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                        <th className="px-4 py-3">Employee</th>
+                                        <th className="px-4 py-3">Dates</th>
+                                        <th className="px-4 py-3">Type</th>
+                                        <th className="px-4 py-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {approvedLeaves.map((leave, idx) => (
+                                        <tr key={idx} className="hover:bg-green-50/30 transition-colors group">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                        {leave.employeeName?.charAt(0)}
+                                                    </div>
+                                                    <span className="text-[13px] font-bold text-gray-700">{leave.employeeName}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-[12px] text-gray-600">
+                                                {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                            </td>
+                                            <td className="px-4 py-3 text-[12px] text-gray-600">{leave.leaveType}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <Link to={`/leaverequest/${leave._id}`} className="text-green-600 font-bold text-[11px] hover:underline bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                                                    View
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
                 {/* Inline Finance Staff Directory */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden mb-8">

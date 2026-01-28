@@ -17,6 +17,8 @@ export default function DepartmentPanel() {
     const [loading, setLoading] = useState(true);
     const [employees, setEmployees] = useState<any[]>([]);
     const [tasks, setTasks] = useState<any[]>([]);
+    const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+    const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
     const [employeeSearch, setEmployeeSearch] = useState('');
     const [showCustomizer, setShowCustomizer] = useState(false);
     const navigate = useNavigate();
@@ -32,22 +34,33 @@ export default function DepartmentPanel() {
 
                 // Fetch real counts for this department
                 const query = `?organizationId=${orgId}&departmentId=${id}`;
-                const [resEmp, resAtt, resTask] = await Promise.all([
+                const [resEmp, resAtt, resTask, resLeave] = await Promise.all([
                     fetch(`/api/resource/employee${query}`),
                     fetch(`/api/resource/attendance${query}`),
-                    fetch(`/api/resource/task${query}`)
+                    fetch(`/api/resource/task${query}`),
+                    fetch(`/api/resource/leaverequest${query}`)
                 ]);
-                const [jsonEmp, jsonAtt, jsonTask] = await Promise.all([resEmp.json(), resAtt.json(), resTask.json()]);
+                const [jsonEmp, jsonAtt, jsonTask, jsonLeave] = await Promise.all([
+                    resEmp.json(), resAtt.json(), resTask.json(), resLeave.json()
+                ]);
 
                 setEmployees(jsonEmp.data || []);
                 setTasks(jsonTask.data || []);
+
+                // Filter leaves for this department that are pending
+                const leaves = jsonLeave.data || [];
+                const pendingLeaves = leaves.filter((l: any) => l.status === 'Pending Department');
+                const approved = leaves.filter((l: any) => l.status === 'Approved');
+                setLeaveRequests(pendingLeaves);
+                setApprovedLeaves(approved);
 
                 const pendingReview = (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length;
                 setCounts({
                     employee: jsonEmp.data?.length || 0,
                     attendance: jsonAtt.data?.length || 0,
                     task: (jsonTask.data || []).filter((t: any) => t.status !== 'Completed').length || 0,
-                    pendingReview: pendingReview
+                    pendingReview: pendingReview,
+                    leave: pendingLeaves.length
                 });
             } catch (e) {
                 console.error(e);
@@ -147,6 +160,11 @@ export default function DepartmentPanel() {
     if (hasFeature('Tasks')) {
         summaryItems.push({ label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' });
     }
+
+    // Leave Requests Section - Always added as a core feature for admins (or could be feature flagged)
+    // Adding to Summary and Master Cards
+    summaryItems.push({ label: 'Pending Leaves', value: loading ? '...' : counts.leave || 0, color: 'text-orange-600', doctype: 'leaverequest' });
+    masterCards.push({ label: 'Leave Requests', count: '', icon: CalendarDays, href: '/leaverequest', color: 'bg-orange-50 text-orange-600' });
 
     if (hasFeature('Announcements')) {
         masterCards.push({ label: 'Announcements', count: '', icon: Megaphone, href: '/announcement', color: 'bg-blue-50 text-blue-600' });
@@ -455,102 +473,233 @@ export default function DepartmentPanel() {
                     </div>
                 )}
 
-                {/* Employee List Section */}
-                {hasFeature('Employee List') && (
+                {/* LEAVE REQUESTS Section - Always Visible */}
+                <div className="space-y-8 mb-8">
+                    <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                            <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                                <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shadow-sm">
+                                    <CalendarDays size={20} />
+                                </div>
+                                Leave Management
+                            </h3>
+                            <Link to="/leaverequest" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
+                                View All Requests <ArrowRight size={14} />
+                            </Link>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                        <th className="px-4 py-3">Employee</th>
+                                        <th className="px-4 py-3">Dates</th>
+                                        <th className="px-4 py-3">Reason</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {leaveRequests.length > 0 ? (
+                                        leaveRequests.map((leave, idx) => (
+                                            <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                            {leave.employeeName?.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[13px] font-bold text-gray-700">{leave.employeeName}</p>
+                                                            <p className="text-[11px] text-gray-500">{leave.employeeId}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="text-[12px] text-gray-600 font-medium">
+                                                        {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400">{leave.leaveType}</div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <p className="text-[12px] text-gray-600 line-clamp-1">{leave.reason}</p>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${leave.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                        leave.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                            'bg-orange-50 text-orange-700 border-orange-100'
+                                                        }`}>
+                                                        {leave.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Link to={`/leaverequest/${leave._id}`} className="text-blue-600 font-bold text-[11px] hover:underline bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                                        Review
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-[13px]">
+                                                No pending leave requests found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* APPROVED LEAVES History Section */}
+                {approvedLeaves.length > 0 && (
                     <div className="space-y-8 mb-8">
                         <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-                                <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-                                        <Users size={20} />
-                                    </div>
-                                    Staff Directory
-                                </h3>
-                                <div className="flex items-center gap-4">
-                                    <Link to="/employee" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
-                                        View Full List <ArrowRight size={14} />
-                                    </Link>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Search staff..."
-                                            value={employeeSearch}
-                                            onChange={(e) => setEmployeeSearch(e.target.value)}
-                                            className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:border-blue-400 w-full md:w-64"
-                                        />
-                                        <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    </div>
+                            <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shadow-sm">
+                                    <CheckCircle2 size={20} />
                                 </div>
-                            </div>
-
+                                Approved Leave History
+                            </h3>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
-                                            <th className="px-4 py-3">Staff Member</th>
-                                            <th className="px-4 py-3">ID</th>
-                                            <th className="px-4 py-3">Designation</th>
+                                            <th className="px-4 py-3">Employee</th>
+                                            <th className="px-4 py-3">Dates</th>
+                                            <th className="px-4 py-3">Type</th>
                                             <th className="px-4 py-3 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {employees
-                                            .filter(emp =>
-                                            (emp.employeeName?.toLowerCase().includes(employeeSearch.toLowerCase()) ||
-                                                emp.employeeId?.toLowerCase().includes(employeeSearch.toLowerCase()) ||
-                                                emp.designation?.toLowerCase().includes(employeeSearch.toLowerCase()))
-                                            )
-                                            .slice(0, 10).map((emp, idx) => (
-                                                <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
-                                                    <td className="px-4 py-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
-                                                                {emp.employeeName?.charAt(0)}
-                                                            </div>
-                                                            <span className="text-[13px] font-bold text-gray-700">{emp.employeeName}</span>
+                                        {approvedLeaves.slice(0, 10).map((leave, idx) => (
+                                            <tr key={idx} className="hover:bg-green-50/30 transition-colors group">
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                            {leave.employeeName?.charAt(0)}
                                                         </div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-[12px] text-gray-500 font-medium">{emp.employeeId}</td>
-                                                    <td className="px-4 py-3">
-                                                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100 uppercase">
-                                                            {emp.designation}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <Link to={`/employee/${emp._id}`} className="text-gray-400 hover:text-blue-600 transition-colors">
-                                                            <Edit size={14} />
-                                                        </Link>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                                        <span className="text-[13px] font-bold text-gray-700">{leave.employeeName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-[12px] text-gray-600">
+                                                    {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                                </td>
+                                                <td className="px-4 py-3 text-[12px] text-gray-600">{leave.leaveType}</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <Link to={`/leaverequest/${leave._id}`} className="text-green-600 font-bold text-[11px] hover:underline bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                                                        View
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
-                                {employees.length === 0 && (
-                                    <div className="py-12 text-center text-gray-400 italic text-[14px]">
-                                        No staff found in this workspace.
-                                    </div>
-                                )}
                             </div>
                         </div>
-
-                        <DepartmentStaffManager
-                            departmentId={id}
-                            title="Staff & Hierarchy"
-                            description="Manage credentials and visual organization chart."
-                        />
                     </div>
                 )}
 
+                {/* Employee List Section */}
+                {
+                    hasFeature('Employee List') && (
+                        <div className="space-y-8 mb-8">
+                            <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                                    <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                                            <Users size={20} />
+                                        </div>
+                                        Staff Directory
+                                    </h3>
+                                    <div className="flex items-center gap-4">
+                                        <Link to="/employee" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
+                                            View Full List <ArrowRight size={14} />
+                                        </Link>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Search staff..."
+                                                value={employeeSearch}
+                                                onChange={(e) => setEmployeeSearch(e.target.value)}
+                                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:border-blue-400 w-full md:w-64"
+                                            />
+                                            <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                                <th className="px-4 py-3">Staff Member</th>
+                                                <th className="px-4 py-3">ID</th>
+                                                <th className="px-4 py-3">Designation</th>
+                                                <th className="px-4 py-3 text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {employees
+                                                .filter(emp =>
+                                                (emp.employeeName?.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                                                    emp.employeeId?.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                                                    emp.designation?.toLowerCase().includes(employeeSearch.toLowerCase()))
+                                                )
+                                                .slice(0, 10).map((emp, idx) => (
+                                                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                                    {emp.employeeName?.charAt(0)}
+                                                                </div>
+                                                                <span className="text-[13px] font-bold text-gray-700">{emp.employeeName}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-[12px] text-gray-500 font-medium">{emp.employeeId}</td>
+                                                        <td className="px-4 py-3">
+                                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100 uppercase">
+                                                                {emp.designation}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <Link to={`/employee/${emp._id}`} className="text-gray-400 hover:text-blue-600 transition-colors">
+                                                                <Edit size={14} />
+                                                            </Link>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                    {employees.length === 0 && (
+                                        <div className="py-12 text-center text-gray-400 italic text-[14px]">
+                                            No staff found in this workspace.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <DepartmentStaffManager
+                                departmentId={id}
+                                title="Staff & Hierarchy"
+                                description="Manage credentials and visual organization chart."
+                            />
+                        </div>
+                    )
+                }
+
                 {/* STUDENTS Management Section (If Education module) */}
-                {hasFeature('STUDENTS') && (
-                    <DepartmentStudentManager
-                        departmentId={id}
-                        organizationId={localStorage.getItem('organization_id') || undefined}
-                        title={`${dept?.name} STUDENTS Management`}
-                        description="Hierarchical view of students by program and counselor."
-                    />
-                )}
-            </div>
-        </div>
+                {
+                    hasFeature('STUDENTS') && (
+                        <DepartmentStudentManager
+                            departmentId={id}
+                            organizationId={localStorage.getItem('organization_id') || undefined}
+                            title={`${dept?.name} STUDENTS Management`}
+                            description="Hierarchical view of students by program and counselor."
+                        />
+                    )
+                }
+            </div >
+        </div >
     );
 }

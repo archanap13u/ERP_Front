@@ -173,8 +173,22 @@ export const fieldRegistry: { [key: string]: any[] } = {
         { name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High', 'Urgent'], default: 'Medium' },
         { name: 'status', label: 'Status', type: 'select', options: ['Open', 'Working', 'Pending Review', 'Completed', 'Cancelled', 'Overdue'], default: 'Open' },
         { name: 'completionEvidence', label: 'Completion Evidence (URL or Description)', type: 'textarea' },
-        { name: 'verificationStatus', label: 'Admin Verification', type: 'select', options: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+        { name: 'verificationStatus', label: 'Admin Verification', type: 'select', options: ['Pending', 'Approved', 'Rejected', 'Request Changes'], default: 'Pending' },
         { name: 'adminRemarks', label: 'Admin Remarks', type: 'textarea' },
+        { name: 'departmentId', label: 'Department ID', type: 'hidden' },
+        { name: 'department', label: 'Department', type: 'hidden' }
+    ],
+    leaverequest: [
+        { name: 'leaveType', label: 'Leave Type', type: 'select', options: ['Sick Leave', 'Casual Leave', 'Emergency Leave', 'Unpaid Leave'], required: true },
+        { name: 'startDate', label: 'Start Date', type: 'date', required: true },
+        { name: 'endDate', label: 'End Date', type: 'date', required: true },
+        { name: 'reason', label: 'Reason for Leave', type: 'textarea', required: true },
+        { name: 'status', label: 'Status', type: 'select', options: ['Pending Department', 'Pending HR', 'Approved', 'Rejected'], default: 'Pending Department', readOnly: true },
+        { name: 'deptAdminRemarks', label: 'Department Admin Remarks', type: 'textarea' },
+        { name: 'hrRemarks', label: 'HR Remarks', type: 'textarea' },
+        // Hidden fields for relationships
+        { name: 'employeeId', label: 'Employee ID', type: 'hidden' },
+        { name: 'employeeName', label: 'Employee Name', type: 'hidden' },
         { name: 'departmentId', label: 'Department ID', type: 'hidden' },
         { name: 'department', label: 'Department', type: 'hidden' }
     ]

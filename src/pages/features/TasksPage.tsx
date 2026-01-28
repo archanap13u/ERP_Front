@@ -77,7 +77,14 @@ export default function TasksPage() {
                             <div className="p-12 text-center text-gray-400 italic text-[13px]">No tasks found.</div>
                         ) : (
                             tasks.map((task, idx) => (
-                                <div key={idx} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between">
+                                <Link
+                                    to={`/task/${task._id}`}
+                                    key={idx}
+                                    className={`p-4 transition-colors flex items-center justify-between block no-underline ${task.verificationStatus === 'Rejected' ? 'bg-red-50 hover:bg-red-100' :
+                                            task.verificationStatus === 'Approved' ? 'bg-green-50 hover:bg-green-100' :
+                                                'hover:bg-gray-50'
+                                        }`}
+                                >
                                     <div className="flex items-center gap-4">
                                         <div className="p-2 bg-orange-50 text-orange-600 rounded">
                                             <CheckSquare size={16} />
@@ -87,7 +94,7 @@ export default function TasksPage() {
                                             <div className="flex items-center gap-2 text-[11px] text-gray-500">
                                                 <span>{task.project || 'No Project'}</span>
                                                 <span className="text-gray-300">•</span>
-                                                <span className="flex items-center gap-1"><Calendar size={10} /> {task.exp_end_date || 'No Date'}</span>
+                                                <span className="flex items-center gap-1"><Calendar size={10} /> {task.exp_end_date ? new Date(task.exp_end_date).toLocaleDateString() : 'No Date'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -97,7 +104,7 @@ export default function TasksPage() {
                                             {task.status || 'Open'}
                                         </span>
                                     </div>
-                                </div>
+                                </Link>
                             ))
                         )}
                     </div>

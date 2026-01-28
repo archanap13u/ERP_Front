@@ -19,6 +19,8 @@ export default function OpsDashboard() {
     const [loading, setLoading] = useState(true);
     const [centers, setCenters] = useState<any[]>([]);
     const [pendingStudents, setPendingStudents] = useState<any[]>([]);
+    const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+    const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [centerStudentsCount, setCenterStudentsCount] = useState(0);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -70,7 +72,7 @@ export default function OpsDashboard() {
                 if (effectiveDeptId) queryParams += `&departmentId=${effectiveDeptId}`;
                 // Removed name filter to avoid mismatch issues
 
-                const [resUni, resStd, resApp, resCen, resEmp, resOpsAnn, resHol, resMarks, resTask] = await Promise.all([
+                const [resUni, resStd, resApp, resCen, resEmp, resOpsAnn, resHol, resMarks, resTask, resLeave] = await Promise.all([
                     fetch(`${baseUrl}/university${queryParams}`),
                     fetch(`${baseUrl}/student${queryParams}`),
                     fetch(`${baseUrl}/studentapplicant${queryParams}`),
@@ -79,11 +81,26 @@ export default function OpsDashboard() {
                     fetch(`${baseUrl}/opsannouncement${queryParams}`),
                     fetch(`${baseUrl}/holiday?organizationId=${orgId || ''}`),
                     fetch(`${baseUrl}/internalmark${queryParams}`),
-                    fetch(`${baseUrl}/task${queryParams}`)
+                    fetch(`${baseUrl}/task${queryParams}`),
+                    fetch(`${baseUrl}/leaverequest${queryParams}`)
                 ]);
-                const [jsonUni, jsonStd, jsonApp, jsonCen, jsonEmp, jsonOpsAnn, jsonHol, jsonMarks, jsonTask] = await Promise.all([
-                    resUni.json(), resStd.json(), resApp.json(), resCen.json(), resEmp.json(), resOpsAnn.json(), resHol.json(), resMarks.json(), resTask.json()
+                const [jsonUni, jsonStd, jsonApp, jsonCen, jsonEmp, jsonOpsAnn, jsonHol, jsonMarks, jsonTask, jsonLeave] = await Promise.all([
+                    resUni.json(), resStd.json(), resApp.json(), resCen.json(), resEmp.json(), resOpsAnn.json(), resHol.json(), resMarks.json(), resTask.json(), resLeave.json()
                 ]);
+
+                // Filter Pending Leaves
+                const fetchedLeaves = jsonLeave.data || [];
+                // STRICT SEPARATION: Only show leaves for this specific department context
+                // If no effectiveDeptId is resolved (Global Ops), we DO NOT show all leaves to avoid polluting the view with other depts.
+                // We only show leaves if we have a valid department context.
+                const pendingLeaves = effectiveDeptId
+                    ? fetchedLeaves.filter((l: any) => l.status === 'Pending Department' && l.departmentId === effectiveDeptId)
+                    : [];
+                const approved = effectiveDeptId
+                    ? fetchedLeaves.filter((l: any) => l.status === 'Approved' && l.departmentId === effectiveDeptId)
+                    : [];
+                setLeaveRequests(pendingLeaves);
+                setApprovedLeaves(approved);
 
                 setCounts({
                     university: jsonUni.data?.length || 0,
@@ -92,13 +109,16 @@ export default function OpsDashboard() {
                     studycenter: jsonCen.data?.length || 0,
                     employee: jsonEmp.data?.length || 0,
                     task: jsonTask.data?.length || 0,
-                    pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length
+                    pendingReview: (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length,
+                    leave: pendingLeaves.length
                 });
                 setEmployees(jsonEmp.data || []);
                 setCenters(jsonCen.data || []);
                 setOpsAnnouncements(jsonOpsAnn.data || []);
                 setHolidays(jsonHol.data?.slice(0, 3) || []);
                 setInternalMarks(jsonMarks.data || []);
+
+                // Store all students
 
                 // Store all students
                 const allStds = jsonStd.data || [];
@@ -157,8 +177,12 @@ export default function OpsDashboard() {
                     { label: 'Review Required', value: loading ? '...' : counts.pendingReview || 0, color: 'text-rose-600', doctype: 'task' },
                     { label: 'Total STUDENTS', value: counts.student.toString(), color: 'text-emerald-500', doctype: 'student' },
                     { label: 'Pending Verifications', value: pendingStudents.length.toString(), color: 'text-rose-500', doctype: 'student' },
+                    { label: 'Pending Leaves', value: counts.leave?.toString() || '0', color: 'text-orange-600', doctype: 'leaverequest' },
                 ]}
-                masterCards={masterCards}
+                masterCards={[
+                    ...masterCards,
+                    { icon: CalendarDays, label: 'Leave Requests', count: '', href: '/leaverequest', feature: 'Leave Request' }
+                ]}
                 shortcuts={shortcuts}
             />
 
@@ -239,6 +263,132 @@ export default function OpsDashboard() {
                         )}
                     </div>
                 </div>
+                {/* Leave Requests Section - Always Visible */}
+                <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                        <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                            <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shadow-sm">
+                                <CalendarDays size={20} />
+                            </div>
+                            Leave Management
+                        </h3>
+                        <Link to="/leaverequest" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
+                            View All Requests <ArrowRight size={14} />
+                        </Link>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                    <th className="px-4 py-3">Employee</th>
+                                    <th className="px-4 py-3">Dates</th>
+                                    <th className="px-4 py-3">Reason</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {leaveRequests.length > 0 ? (
+                                    leaveRequests.map((leave, idx) => (
+                                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                        {leave.employeeName?.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[13px] font-bold text-gray-700">{leave.employeeName}</p>
+                                                        <p className="text-[11px] text-gray-500">{leave.employeeId}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="text-[12px] text-gray-600 font-medium">
+                                                    {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400">{leave.leaveType}</div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <p className="text-[12px] text-gray-600 line-clamp-1">{leave.reason}</p>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${leave.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                    leave.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                        'bg-orange-50 text-orange-700 border-orange-100'
+                                                    }`}>
+                                                    {leave.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <Link to={`/leaverequest/${leave._id}`} className="text-blue-600 font-bold text-[11px] hover:underline bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                                    Review
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-[13px]">
+                                            No pending leave requests found.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* APPROVED LEAVES History Section */}
+                {approvedLeaves.length > 0 && (
+                    <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden mb-8">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                            <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                                <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shadow-sm">
+                                    <CheckCircle2 size={20} />
+                                </div>
+                                Approved Leave History
+                            </h3>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                        <th className="px-4 py-3">Employee</th>
+                                        <th className="px-4 py-3">Dates</th>
+                                        <th className="px-4 py-3">Type</th>
+                                        <th className="px-4 py-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {approvedLeaves.map((leave, idx) => (
+                                        <tr key={idx} className="hover:bg-green-50/30 transition-colors group">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                        {leave.employeeName?.charAt(0)}
+                                                    </div>
+                                                    <span className="text-[13px] font-bold text-gray-700">{leave.employeeName}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-[12px] text-gray-600">
+                                                {leave.fromDate} <span className="text-gray-400 mx-1">to</span> {leave.toDate}
+                                            </td>
+                                            <td className="px-4 py-3 text-[12px] text-gray-600">{leave.leaveType}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <Link to={`/leaverequest/${leave._id}`} className="text-green-600 font-bold text-[11px] hover:underline bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                                                    View
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {/* Recent Announcements Feed */}
                 <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
