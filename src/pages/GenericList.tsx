@@ -405,7 +405,16 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                                 {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'Today'}
                                             </td>
                                             <td className="px-4 py-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MoreHorizontal size={16} className="text-gray-400 hover:text-blue-600" />
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={(e) => handleDelete(e, item._id)}
+                                                        className="p-1 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                    <MoreHorizontal size={16} className="text-gray-400" />
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
