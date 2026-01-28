@@ -550,6 +550,9 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                             const isDeptAdmin = ['DepartmentAdmin', 'HeadOfDepartment', 'OrganizationAdmin', 'Operations', 'HR', 'HumanResources', 'SuperAdmin', 'Finance', 'Inventory', 'CRM', 'Support', 'Assets'].includes(userRole || '');
                             const isHR = ['HR', 'HumanResources', 'SuperAdmin'].includes(userRole || '') || (userRole === 'DepartmentAdmin' && localStorage.getItem('department_name') === 'Human Resources');
 
+                            const currentEmployeeId = localStorage.getItem('employee_id');
+                            const isMyRequest = formData.employeeId === currentEmployeeId;
+
                             // Helper to immediately save status changes
                             const updateStatus = async (newStatus: string, remarksKey?: string, remarksValue?: string) => {
                                 setLoading(true); // Re-use loading state or add a specific one
@@ -592,6 +595,15 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                                     setLoading(false);
                                 }
                             };
+
+                            // PREVENTION: Cannot approve own request
+                            if (isMyRequest && (formData.status === 'Pending Department' || formData.status === 'Pending HR')) {
+                                return (
+                                    <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-amber-800 text-sm italic">
+                                        Your request is currently {formData.status}. Waiting for independent approval.
+                                    </div>
+                                );
+                            }
 
                             // DEPT ADMIN ACTIONS
                             if (isDeptAdmin && formData.status === 'Pending Department') {

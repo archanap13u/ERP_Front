@@ -380,8 +380,9 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             if (myDept) currentData.department = myDept;
             if (myDeptId) currentData.departmentId = myDeptId;
 
-            // Defaut status is Pending Department
-            currentData.status = 'Pending Department';
+            // Admins go directly to Pending HR, Employees go to Pending Department
+            const isAdmin = ['DepartmentAdmin', 'HR', 'Operations', 'Finance', 'SuperAdmin', 'OrganizationAdmin', 'HumanResources', 'HeadOfDepartment', 'Inventory', 'CRM', 'Support', 'Assets', 'Projects'].includes(userRole || '');
+            currentData.status = isAdmin ? 'Pending HR' : 'Pending Department';
 
             console.log('[GenericNew] Auto-populated Leave Request:', {
                 emp: currentData.employeeName,
