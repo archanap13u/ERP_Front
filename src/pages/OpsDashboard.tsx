@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, CalendarDays, MapPin, Lock, ExternalLink, ArrowRight, UserPlus, Users, ClipboardList, Edit, Clock, Pin, Plus, Search, Trash2, ListTodo } from 'lucide-react';
+import { School, Building2, BookOpen, GraduationCap, FileCheck, TrendingUp, Megaphone, CalendarDays, MapPin, Lock, ExternalLink, ArrowRight, UserPlus, Users, ClipboardList, Edit, Clock, Pin, Plus, Search, Trash2, ListTodo, CheckCircle2 } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';

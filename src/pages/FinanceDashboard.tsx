@@ -16,7 +16,8 @@ import {
     Edit,
     Clock,
     ListTodo,
-    CalendarDays
+    CalendarDays,
+    CheckCircle2
 } from 'lucide-react';
 import Workspace from '../components/Workspace';
 import { Link } from 'react-router-dom';
