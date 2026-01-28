@@ -146,7 +146,6 @@ export default function Sidebar() {
         { icon: Building2, label: 'Study Centers', href: '/studycenter', roles: ['Operations'], feature: 'Study Center' },
         { icon: GraduationCap, label: 'Programs', href: '/program', roles: ['Operations'], feature: 'Programs' },
         { icon: ClipboardList, label: 'APPLICATIONS', href: '/student', roles: ['Operations'], feature: 'APPLICATIONS' },
-        { icon: Megaphone, label: 'Ops Announcements', href: '/opsannouncement', roles: ['Operations'], feature: 'Ops Announcements' },
         { icon: UserCheck, label: 'Internal Marks', href: '/internalmark', roles: ['Operations', 'StudyCenter'], feature: 'Internal Marks' },
 
         // CRM & Sales

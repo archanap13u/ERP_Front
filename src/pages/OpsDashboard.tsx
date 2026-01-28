@@ -148,7 +148,6 @@ export default function OpsDashboard() {
         { icon: BookOpen, label: 'Programs', count: '', href: '/program', feature: 'Programs' },
         { icon: ClipboardList, label: 'APPLICATIONS', count: '', href: '/studentapplicant', feature: 'APPLICATIONS' },
         { icon: GraduationCap, label: 'STUDENTS', count: '', href: '/student', feature: 'STUDENTS' },
-        { icon: Megaphone, label: 'Ops Announcements', count: '', href: `/opsannouncement?department=${encodeURIComponent(contextData.name || 'Operations')}&departmentId=${contextData.id || ''}`, feature: 'Announcements' },
     ];
 
     const allShortcuts = [
@@ -401,9 +400,6 @@ export default function OpsDashboard() {
                         <div className="flex items-center gap-4">
                             <Link to={`/opsannouncement/new?department=${encodeURIComponent(contextData.name || '')}&departmentId=${contextData.id || ''}`} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-[12px] font-bold shadow-sm hover:scale-105 transition-transform no-underline">
                                 Post New
-                            </Link>
-                            <Link to="/opsannouncement" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
-                                View Full Feed <ArrowRight size={14} />
                             </Link>
                         </div>
                     </div>
