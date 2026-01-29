@@ -94,7 +94,7 @@ const MODULES = [
     {
         id: 'Sales',
         name: 'Sales Workspace',
-        features: ['Leads', 'Deals', 'Customers', 'Quotations', 'Sales Orders', 'Announcements', 'Employee List', 'Tasks'],
+        features: ['Announcements', 'Employee List', 'Tasks', 'Attendance', 'Holidays', 'Employee Complaints'],
         color: 'text-red-600',
         bg: 'bg-red-50',
         border: 'border-red-100'
