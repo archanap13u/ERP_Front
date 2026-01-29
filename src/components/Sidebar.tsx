@@ -102,10 +102,11 @@ export default function Sidebar() {
                 (role === 'Operations' || panelType === 'Operations' || panelType === 'Education') ? '/ops-dashboard' :
                     (role === 'HR' || panelType === 'HR') ? '/hr' :
                         (role === 'Finance' || panelType === 'Finance') ? '/finance' :
-                            '/employee-dashboard',
+                            (panelType === 'Sales') ? '/sales-dashboard' :
+                                '/employee-dashboard',
             roles: ['Employee', 'DepartmentAdmin', 'HR', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets']
         },
-        { icon: UserCheck, label: 'Staff Portal', href: '/employee-dashboard', roles: ['HR', 'Operations', 'Finance', 'DepartmentAdmin'] },
+        { icon: UserCheck, label: 'Staff Portal', href: '/employee-dashboard', roles: ['HR', 'Operations', 'Finance', 'DepartmentAdmin'], feature: 'Staff Portal' },
         { icon: LayoutDashboard, label: 'Student Portal', href: '/student-dashboard', roles: ['Student'] },
         // LMS Student Links
         { icon: Clock, label: 'Exams', href: '/student/exams', roles: ['Student'] },
@@ -244,26 +245,18 @@ export default function Sidebar() {
         // 2. Strict Feature Check for Department Admin/Customized Panels
         // EXCEPTION: Standard Employees should NOT inherit their department's admin features
         if ((role === 'DepartmentAdmin' || (deptFeatures && deptFeatures.length > 0)) && role !== 'Employee') {
-            // Always show basic navigation items (Dashboard, Notifications, Task Management)
-            const alwaysShowForDeptAdmin = ['Task Management', 'Tasks', 'Leave Requests'];
-            if (!item.feature || (role === 'DepartmentAdmin' && alwaysShowForDeptAdmin.includes(item.label || ''))) {
-                return roleAllowed;
-            }
+            // Always show basic navigation items
+            // EXCEPTION: For Sales (Staff Portal), we only want Dashboard and the Staff Portal itself.
+            const alwaysShowForDeptAdmin = panelType === 'Sales' ? [] : ['Task Management', 'Tasks', 'Leave Requests', 'Notifications'];
 
-            // --- STAFF PORTAL COMPOUND FEATURE ---
-            // If the "Staff Portal" feature is assigned, it enables a bundle of staff management tools
-            if (deptFeatures.includes('Staff Portal')) {
-                const staffPortalBundle = [
-                    'Announcements',
-                    'Employee List',
-                    'Tasks',
-                    'Attendance',
-                    'Holidays',
-                    'Employee Complaints'
-                ];
-                if (item.feature && staffPortalBundle.includes(item.feature)) {
-                    return true;
-                }
+            if (!item.feature || (role === 'DepartmentAdmin' && alwaysShowForDeptAdmin.includes(item.label || ''))) {
+                // If it's a Dashboard link, we always show it
+                if (item.label === 'Dashboard' || item.label === 'Staff Portal') return roleAllowed;
+
+                // For Sales, if it's not Dashboard/Staff Portal and has no feature, hide it (like Notifications)
+                if (panelType === 'Sales' && !item.feature) return false;
+
+                return roleAllowed;
             }
 
             // For other items, strictly check if the feature is in the selected list
