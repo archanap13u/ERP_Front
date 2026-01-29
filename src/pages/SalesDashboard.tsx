@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
     Users,
-    TrendingUp,
-    Plus,
     Clock,
     Building2,
     ArrowRight,
@@ -13,7 +11,11 @@ import {
     CheckCircle2,
     MessageSquare,
     ClipboardList,
-    AlertCircle
+    AlertCircle,
+    GraduationCap,
+    BadgeDollarSign,
+    TrendingUp,
+    Plus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Workspace from '../components/Workspace';
@@ -66,7 +68,10 @@ export default function SalesDashboard() {
                     fetch(`${baseUrl}/task${deptParams}`).then(r => r.json()),
                     fetch(`${baseUrl}/announcement${params}${effectiveDeptId ? `&departmentId=${effectiveDeptId}` : ''}`).then(r => r.json()),
                     fetch(`${baseUrl}/complaint${deptParams}`).then(r => r.json()),
-                    fetch(`${baseUrl}/leave-request${deptParams}`).then(r => r.json())
+                    fetch(`${baseUrl}/leave-request${deptParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/studycenter${deptParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/student${deptParams}`).then(r => r.json()),
+                    fetch(`${baseUrl}/paymententry${deptParams}`).then(r => r.json())
                 ];
 
                 if (effectiveDeptId) {
@@ -74,8 +79,8 @@ export default function SalesDashboard() {
                 }
 
                 const results = await Promise.all(fetchPromises);
-                const [jsonEmp, jsonAtt, jsonTask, jsonAnn, jsonComp, jsonLeave] = results;
-                const jsonFeatures = effectiveDeptId ? results[6] : null;
+                const [jsonEmp, jsonAtt, jsonTask, jsonAnn, jsonComp, jsonLeave, jsonCenters, jsonStudents, jsonPayments] = results;
+                const jsonFeatures = effectiveDeptId ? results[9] : null;
 
                 setEmployees(jsonEmp.data?.slice(0, 5) || []);
                 setTasks(jsonTask.data?.slice(0, 5) || []);
@@ -85,12 +90,18 @@ export default function SalesDashboard() {
                 const today = new Date().toISOString().split('T')[0];
                 const presentToday = jsonAtt.data?.filter((a: any) => a.date?.startsWith(today) && a.status === 'Present').length || 0;
 
+                // Revenue calculation
+                const revenue = jsonPayments.data?.reduce((sum: number, p: any) => sum + (p.amount || 0), 0) || 0;
+
                 setCounts({
                     employee: jsonEmp.data?.length || 0,
                     present: presentToday,
                     task: jsonTask.data?.filter((t: any) => t.status !== 'Completed').length || 0,
                     complaint: jsonComp.data?.filter((c: any) => c.status !== 'Resolved').length || 0,
-                    leave: jsonLeave.data?.filter((l: any) => l.status === 'Pending').length || 0
+                    leave: jsonLeave.data?.filter((l: any) => l.status === 'Pending').length || 0,
+                    centers: jsonCenters.data?.length || 0,
+                    students: jsonStudents.data?.length || 0,
+                    revenue: revenue
                 });
 
                 if (jsonFeatures?.data?.features) {
@@ -109,7 +120,7 @@ export default function SalesDashboard() {
 
     const hasFeature = (feat: string) => {
         if (features.includes('Staff Portal')) {
-            const bundle = ['Announcements', 'Employee List', 'Tasks', 'Attendance', 'Holidays', 'Employee Complaints', 'Leave Requests'];
+            const bundle = ['Announcements', 'Employee List', 'Tasks', 'Attendance', 'Holidays', 'Employee Complaints', 'Leave Requests', 'STUDENTS', 'Study Center', 'Payments'];
             if (bundle.includes(feat)) return true;
         }
         return features.includes(feat);
@@ -135,25 +146,26 @@ export default function SalesDashboard() {
     };
 
     const summaryItems = [
+        { label: 'Total Leads', value: loading ? '...' : counts.centers || 0, color: 'text-orange-600', doctype: 'studycenter', feature: 'Study Center' },
+        { label: 'Total Admissions', value: loading ? '...' : counts.students || 0, color: 'text-indigo-600', doctype: 'student', feature: 'STUDENTS' },
+        { label: 'Revenue Generated', value: loading ? '...' : `₹${counts.revenue?.toLocaleString() || 0}`, color: 'text-emerald-600', doctype: 'paymententry', feature: 'Payments' },
         { label: 'Total Staff', value: loading ? '...' : counts.employee || 0, color: 'text-blue-600', doctype: 'employee', feature: 'Employee List' },
-        { label: 'Present Today', value: loading ? '...' : counts.present || 0, color: 'text-emerald-600', doctype: 'attendance', feature: 'Attendance' },
-        { label: 'Open Tasks', value: loading ? '...' : counts.task || 0, color: 'text-orange-600', doctype: 'task', feature: 'Tasks' },
-        { label: 'Pending Leaves', value: loading ? '...' : counts.leave || 0, color: 'text-purple-600', doctype: 'leave-request', feature: 'Leave Requests' },
     ].filter(i => hasFeature(i.feature));
 
     const masterCards = [
+        { label: 'Leads (Centers)', icon: Building2, count: counts.centers?.toString(), href: `/studycenter`, color: 'bg-orange-50 text-orange-600', feature: 'Study Center' },
+        { label: 'Admissions', icon: GraduationCap, count: counts.students?.toString(), href: `/student`, color: 'bg-indigo-50 text-indigo-600', feature: 'STUDENTS' },
+        { label: 'Revenue', icon: BadgeDollarSign, count: `₹${counts.revenue?.toLocaleString() || 0}`, href: `/paymententry`, color: 'bg-emerald-50 text-emerald-600', feature: 'Payments' },
         { label: 'Staff List', icon: Users, count: counts.employee?.toString(), href: `/employee?departmentId=${contextData.id || ''}`, color: 'bg-blue-50 text-blue-600', feature: 'Employee List' },
         { label: 'Attendance', icon: Clock, count: counts.present?.toString(), href: `/attendance?departmentId=${contextData.id || ''}`, color: 'bg-emerald-50 text-emerald-600', feature: 'Attendance' },
         { label: 'Dept Tasks', icon: ClipboardList, count: counts.task?.toString(), href: `/task?departmentId=${contextData.id || ''}`, color: 'bg-orange-50 text-orange-600', feature: 'Tasks' },
-        { label: 'Leave Requests', icon: Calendar, count: counts.leave?.toString(), href: `/leave-request?departmentId=${contextData.id || ''}`, color: 'bg-purple-50 text-purple-600', feature: 'Leave Requests' },
-        { label: 'Complaints', icon: MessageSquare, count: counts.complaint?.toString(), href: `/complaint?departmentId=${contextData.id || ''}`, color: 'bg-red-50 text-red-600', feature: 'Employee Complaints' },
     ].filter(c => hasFeature(c.feature));
 
     const shortcuts = [
-        { label: 'Mark Attendance', href: '/attendance/new', feature: 'Attendance' },
-        { label: 'Assign Task', href: '/task/new', feature: 'Tasks' },
-        { label: 'Post Announcement', href: '/announcement/new', feature: 'Announcements' },
-        { label: 'Staff Directory', href: `/employee?departmentId=${contextData.id || ''}`, feature: 'Employee List' },
+        { label: 'Add New Lead (Center)', href: '/studycenter/new', feature: 'Study Center' },
+        { label: 'New Admission', href: '/student/new', feature: 'STUDENTS' },
+        { label: 'Record Payment', href: '/paymententry/new', feature: 'Payments' },
+        { label: 'Add Staff Member', href: '/employee/new', feature: 'Employee List' },
     ].filter(s => hasFeature(s.feature));
 
     return (
