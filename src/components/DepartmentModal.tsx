@@ -94,7 +94,7 @@ const MODULES = [
     {
         id: 'Sales',
         name: 'SALES WORKSPACE',
-        features: ['Staff Portal'],
+        features: ['Employee List', 'Study Center'],
         color: 'text-red-600',
         bg: 'bg-red-50',
         border: 'border-red-100'
@@ -387,7 +387,7 @@ export default function DepartmentModal({ isOpen, onClose, onSave, initialData, 
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                             {ALL_FEATURES.filter(feat => {
-                                if (formData.panelType === 'Sales') return feat === 'Staff Portal';
+                                if (formData.panelType === 'Sales') return feat === 'Employee List' || feat === 'Study Center';
                                 return true;
                             }).map(feat => {
                                 const isActive = formData.features.includes(feat);

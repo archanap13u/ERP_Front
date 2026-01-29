@@ -119,10 +119,6 @@ export default function SalesDashboard() {
     }, [orgId, deptId]);
 
     const hasFeature = (feat: string) => {
-        if (features.includes('Staff Portal')) {
-            const bundle = ['Announcements', 'Employee List', 'Tasks', 'Attendance', 'Holidays', 'Employee Complaints', 'Leave Requests', 'STUDENTS', 'Study Center', 'Payments'];
-            if (bundle.includes(feat)) return true;
-        }
         return features.includes(feat);
     };
 
@@ -147,15 +143,11 @@ export default function SalesDashboard() {
 
     const summaryItems = [
         { label: 'Total Leads', value: loading ? '...' : counts.centers || 0, color: 'text-orange-600', doctype: 'studycenter', feature: 'Study Center' },
-        { label: 'Total Admissions', value: loading ? '...' : counts.students || 0, color: 'text-indigo-600', doctype: 'student', feature: 'STUDENTS' },
-        { label: 'Revenue Generated', value: loading ? '...' : `₹${counts.revenue?.toLocaleString() || 0}`, color: 'text-emerald-600', doctype: 'paymententry', feature: 'Payments' },
         { label: 'Total Staff', value: loading ? '...' : counts.employee || 0, color: 'text-blue-600', doctype: 'employee', feature: 'Employee List' },
     ].filter(i => hasFeature(i.feature));
 
     const masterCards = [
         { label: 'Leads (Centers)', icon: Building2, count: counts.centers?.toString(), href: `/studycenter`, color: 'bg-orange-50 text-orange-600', feature: 'Study Center' },
-        { label: 'Admissions', icon: GraduationCap, count: counts.students?.toString(), href: `/student`, color: 'bg-indigo-50 text-indigo-600', feature: 'STUDENTS' },
-        { label: 'Revenue', icon: BadgeDollarSign, count: `₹${counts.revenue?.toLocaleString() || 0}`, href: `/paymententry`, color: 'bg-emerald-50 text-emerald-600', feature: 'Payments' },
         { label: 'Staff List', icon: Users, count: counts.employee?.toString(), href: `/employee?departmentId=${contextData.id || ''}`, color: 'bg-blue-50 text-blue-600', feature: 'Employee List' },
         { label: 'Attendance', icon: Clock, count: counts.present?.toString(), href: `/attendance?departmentId=${contextData.id || ''}`, color: 'bg-emerald-50 text-emerald-600', feature: 'Attendance' },
         { label: 'Dept Tasks', icon: ClipboardList, count: counts.task?.toString(), href: `/task?departmentId=${contextData.id || ''}`, color: 'bg-orange-50 text-orange-600', feature: 'Tasks' },
@@ -163,8 +155,6 @@ export default function SalesDashboard() {
 
     const shortcuts = [
         { label: 'Add New Lead (Center)', href: '/studycenter/new', feature: 'Study Center' },
-        { label: 'New Admission', href: '/student/new', feature: 'STUDENTS' },
-        { label: 'Record Payment', href: '/paymententry/new', feature: 'Payments' },
         { label: 'Add Staff Member', href: '/employee/new', feature: 'Employee List' },
     ].filter(s => hasFeature(s.feature));
 

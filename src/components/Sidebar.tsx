@@ -259,25 +259,6 @@ export default function Sidebar() {
                 return roleAllowed;
             }
 
-            // --- STAFF PORTAL COMPOUND FEATURE ---
-            // If the "Staff Portal" feature is assigned, it enables a bundle of tools
-            if (deptFeatures.includes('Staff Portal')) {
-                const staffPortalBundle = [
-                    'Announcements',
-                    'Employee List',
-                    'Tasks',
-                    'Attendance',
-                    'Holidays',
-                    'Employee Complaints',
-                    'STUDENTS',
-                    'Study Center',
-                    'Payments'
-                ];
-                if (item.feature && staffPortalBundle.includes(item.feature)) {
-                    return true;
-                }
-            }
-
             // For other items, strictly check if the feature is in the selected list
             return deptFeatures.includes(item.feature);
         }
