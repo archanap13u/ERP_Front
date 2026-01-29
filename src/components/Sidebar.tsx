@@ -121,7 +121,7 @@ export default function Sidebar() {
 
         // HR & Employee Management
         { icon: Users, label: 'HR Workspace', href: '/hr', roles: ['HR'], feature: 'HR Dashboard' },
-        { icon: ClipboardList, label: 'Employee List', href: '/employee', roles: ['HR'], feature: 'Employee List' },
+        { icon: ClipboardList, label: 'Employee List', href: '/employee', roles: ['HR', 'DepartmentAdmin'], feature: 'Employee List' },
         { icon: UserCheck, label: 'Add Employee', href: '/employee/new', roles: ['HR'], feature: 'Add Employee' },
         { icon: Building2, label: 'Post Vacancy', href: '/jobopening', roles: ['HR'], feature: 'Post Vacancy' },
         { icon: ArrowLeftRight, label: 'Employee Transfer', href: '/employee-transfer', roles: ['HR'], feature: 'Employee Transfer' },
@@ -144,7 +144,7 @@ export default function Sidebar() {
 
         // Operations
         { icon: School, label: 'Universities', href: '/university', roles: ['Operations'], feature: 'University' },
-        { icon: Building2, label: 'Study Centers', href: '/studycenter', roles: ['Operations'], feature: 'Study Center' },
+        { icon: Building2, label: 'Study Centers', href: '/studycenter', roles: ['Operations', 'DepartmentAdmin'], feature: 'Study Center' },
         { icon: GraduationCap, label: 'Programs', href: '/program', roles: ['Operations'], feature: 'Programs' },
         { icon: ClipboardList, label: 'APPLICATIONS', href: '/student', roles: ['Operations'], feature: 'APPLICATIONS' },
         { icon: UserCheck, label: 'Internal Marks', href: '/internalmark', roles: ['Operations', 'StudyCenter'], feature: 'Internal Marks' },
@@ -257,6 +257,25 @@ export default function Sidebar() {
                 if (panelType === 'Sales' && !item.feature) return false;
 
                 return roleAllowed;
+            }
+
+            // --- STAFF PORTAL COMPOUND FEATURE ---
+            // If the "Staff Portal" feature is assigned, it enables a bundle of tools
+            if (deptFeatures.includes('Staff Portal')) {
+                const staffPortalBundle = [
+                    'Announcements',
+                    'Employee List',
+                    'Tasks',
+                    'Attendance',
+                    'Holidays',
+                    'Employee Complaints',
+                    'STUDENTS',
+                    'Study Center',
+                    'Payments'
+                ];
+                if (item.feature && staffPortalBundle.includes(item.feature)) {
+                    return true;
+                }
             }
 
             // For other items, strictly check if the feature is in the selected list
