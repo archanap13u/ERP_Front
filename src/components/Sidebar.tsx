@@ -26,7 +26,9 @@ import {
     ClipboardList,
     Clock,
     Award,
-    ListTodo
+    ListTodo,
+    UserPlus,
+    Plus
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -147,6 +149,11 @@ export default function Sidebar() {
         { icon: Building2, label: 'Study Centers', href: '/studycenter', roles: ['Operations', 'DepartmentAdmin'], feature: 'Study Center' },
         { icon: GraduationCap, label: 'Programs', href: '/program', roles: ['Operations'], feature: 'Programs' },
         { icon: ClipboardList, label: 'APPLICATIONS', href: '/student', roles: ['Operations'], feature: 'APPLICATIONS' },
+        { icon: UserCheck, label: 'Add Staff Member', href: '/employee/new', roles: ['DepartmentAdmin'], feature: 'Employee List', panelType: 'Sales' },
+        { icon: UserPlus, label: 'New Admission', href: '/student/new', roles: ['DepartmentAdmin'], feature: 'STUDENTS', panelType: 'Sales' },
+        { icon: BadgeDollarSign, label: 'Record Payment', href: '/paymententry/new', roles: ['DepartmentAdmin'], feature: 'Payments', panelType: 'Sales' },
+        { icon: Plus, label: 'Add New Lead', href: '/studycenter/new', roles: ['DepartmentAdmin'], feature: 'Study Center', panelType: 'Sales' },
+
         { icon: UserCheck, label: 'Internal Marks', href: '/internalmark', roles: ['Operations', 'StudyCenter'], feature: 'Internal Marks' },
 
         // CRM & Sales
@@ -257,6 +264,31 @@ export default function Sidebar() {
                 if (panelType === 'Sales' && !item.feature) return false;
 
                 return roleAllowed;
+            }
+
+            // --- SALES PANEL TYPE SPECIFIC OVERRIDE ---
+            // If it's a Sales shortcut (marked by panelType: 'Sales'), allow it if Staff Portal is active
+            if (panelType === 'Sales' && (item as any).panelType === 'Sales' && deptFeatures.includes('Staff Portal')) {
+                return true;
+            }
+
+            // --- STAFF PORTAL COMPOUND FEATURE ---
+            // If the "Staff Portal" feature is assigned, it enables a bundle of tools
+            if (deptFeatures.includes('Staff Portal')) {
+                const staffPortalBundle = [
+                    'Announcements',
+                    'Employee List',
+                    'Tasks',
+                    'Attendance',
+                    'Holidays',
+                    'Employee Complaints',
+                    'STUDENTS',
+                    'Study Center',
+                    'Payments'
+                ];
+                if (item.feature && staffPortalBundle.includes(item.feature)) {
+                    return true;
+                }
             }
 
             // For other items, strictly check if the feature is in the selected list
