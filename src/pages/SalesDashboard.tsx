@@ -129,7 +129,7 @@ export default function SalesDashboard() {
     return (
         <div className="space-y-8 pb-20">
             <Workspace
-                title="Sales Department Staff Portal"
+                title="Staff Portal"
                 newHref="/employee/new"
                 newLabel="Add Staff"
                 onCustomize={() => setIsCustomizing(true)}

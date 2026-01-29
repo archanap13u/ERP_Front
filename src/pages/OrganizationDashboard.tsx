@@ -436,7 +436,7 @@ export default function OrganizationDashboard() {
                                                     <option value="HR">HR Workspace</option>
                                                     <option value="Operations">Operations</option>
                                                     <option value="Finance">Finance Workspace</option>
-                                                    <option value="Sales">Sales Workspace</option>
+                                                    <option value="Sales">Staff Portal</option>
                                                 </select>
                                             </td>
                                             <td className="px-4 py-4">

@@ -93,7 +93,7 @@ const MODULES = [
     },
     {
         id: 'Sales',
-        name: 'Sales Workspace',
+        name: 'Staff Portal',
         features: ['Announcements', 'Employee List', 'Tasks', 'Attendance', 'Holidays', 'Employee Complaints'],
         color: 'text-red-600',
         bg: 'bg-red-50',
