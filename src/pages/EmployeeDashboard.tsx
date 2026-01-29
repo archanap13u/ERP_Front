@@ -35,7 +35,8 @@ export default function EmployeeDashboard() {
 
     useEffect(() => {
         const storedName = localStorage.getItem('user_name');
-        const storedId = localStorage.getItem('employee_id');
+        const rawId = localStorage.getItem('employee_id');
+        const storedId = (rawId === 'undefined' || rawId === 'null') ? '' : rawId;
         const mongoId = localStorage.getItem('user_id');
         setName(storedName || 'Staff Member');
         setEmpId(storedId || '');

@@ -90,6 +90,14 @@ const MODULES = [
         color: 'text-slate-600',
         bg: 'bg-slate-50',
         border: 'border-slate-100'
+    },
+    {
+        id: 'Sales',
+        name: 'Sales Workspace',
+        features: ['Leads', 'Deals', 'Customers', 'Quotations', 'Sales Orders', 'Announcements', 'Employee List', 'Tasks'],
+        color: 'text-red-600',
+        bg: 'bg-red-50',
+        border: 'border-red-100'
     }
 ];
 

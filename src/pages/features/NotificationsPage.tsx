@@ -42,7 +42,7 @@ export default function NotificationsPage() {
                 let data = [];
                 if (userRole === 'StudyCenter') {
                     // For Centers, we only fetch Operations announcements now
-                    const res = await fetch(`/api/resource/opsannouncement${baseQuery}`);
+                    const res = await fetch(`/api/resource/opsannouncement${baseQuery}&studyCenter=${encodeURIComponent(userCenter || '')}`);
                     const json = await res.json();
                     data = json.data || [];
                 } else {
@@ -209,9 +209,9 @@ export default function NotificationsPage() {
                                                 <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full flex items-center gap-1">
                                                     <User size={10} /> {notification.author || 'Operations'}
                                                 </span>
-                                                {notification.targetCenter !== 'All' && (
+                                                {notification.targetStudyCenter && notification.targetStudyCenter !== 'All' && (
                                                     <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-bold">
-                                                        {notification.targetCenter}
+                                                        {notification.targetStudyCenter}
                                                     </span>
                                                 )}
                                             </div>

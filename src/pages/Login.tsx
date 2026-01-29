@@ -152,6 +152,8 @@ export default function LoginPage() {
                             navigate('/ops-dashboard');
                         } else if (panelType === 'Finance') {
                             navigate('/finance');
+                        } else if (panelType === 'Sales') {
+                            navigate('/sales-dashboard');
                         } else {
                             navigate(`/department/${data.user.departmentId}`);
                         }

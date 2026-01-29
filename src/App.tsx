@@ -22,6 +22,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import OpsDashboard from './pages/OpsDashboard';
 import FinanceDashboard from './pages/FinanceDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import SalesDashboard from './pages/SalesDashboard';
 import Departments from './pages/Departments';
 import DepartmentPanel from './pages/DepartmentPanel';
 import CenterDashboard from './pages/CenterDashboard';
@@ -140,6 +141,7 @@ function App() {
                         <Route path="/finance" element={<FinanceDashboard />} />
                         <Route path="/ops-dashboard" element={<OpsDashboard />} />
                         <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
+                        <Route path="/sales-dashboard" element={<SalesDashboard />} />
                         <Route path="/student-dashboard" element={<StudentDashboard />} />
                         <Route path="/center-dashboard" element={<CenterDashboard />} />
                         {/* HR Module */}

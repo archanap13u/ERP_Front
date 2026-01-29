@@ -92,30 +92,35 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                     }
                 }
 
-                // Extra privacy for complaints: Employees AND Dept Admins only see their own
-                // Only HR (Dept) and SuperAdmin (Global) can see ALL complaints. 
+                // Extra privacy for complaints: Regular Employees only see their own
+                // HR (Dept), DepartmentAdmin, and SuperAdmin can see ALL complaints from their scope
                 // OrganizationAdmin is restricted because they might be a Dept Head acting as Org Admin.
                 if (doctype === 'complaint') {
                     const isHR = userRole === 'HR' || deptName === 'Human Resources' || deptName === 'HR';
-                    const isSuper = userRole === 'SuperAdmin'; // REMOVED OrganizationAdmin from here
+                    const isSuper = userRole === 'SuperAdmin';
+                    const isDeptAdmin = userRole === 'DepartmentAdmin';
 
-                    console.log(`[GenericList] Complaint Access Check: Role=${userRole}, Dept=${deptName}, isHR=${isHR}, isSuper=${isSuper}`);
+                    console.log(`[GenericList] Complaint Access Check: Role=${userRole}, Dept=${deptName}, isHR=${isHR}, isSuper=${isSuper}, isDeptAdmin=${isDeptAdmin}`);
 
-                    if (!isHR && !isSuper) {
-                        const storedEmpId = localStorage.getItem('employee_id');
+                    if (isHR || isSuper) {
+                        // HR/SuperAdmin: Explicitly request ALL records across organization
+                        url += `&view=all`;
+                        console.log(`[GenericList] Admin Fetch URL (View All): ${url}`);
+                    } else if (isDeptAdmin) {
+                        // DepartmentAdmin: See all complaints from their department
+                        if (deptId) url += `&departmentId=${deptId}`;
+                        console.log(`[GenericList] DeptAdmin Fetch URL (Department Scope): ${url}`);
+                    } else {
+                        // Regular Employee: Only see their own complaints
+                        const rawEmpId = localStorage.getItem('employee_id');
+                        const storedEmpId = (rawEmpId === 'undefined' || rawEmpId === 'null') ? '' : rawEmpId;
                         const storedUserName = localStorage.getItem('user_name');
 
                         // Pass both if available, backend handles OR logic
-                        if (storedEmpId && storedEmpId !== 'null') url += `&employeeId=${storedEmpId}`;
-
-                        // CRITICAL: We must pass 'username' param for Dept Admins (e.g. 'operation') who don't have employee IDs
+                        if (storedEmpId) url += `&employeeId=${storedEmpId}`;
                         if (storedUserName && storedUserName !== 'null') url += `&username=${encodeURIComponent(storedUserName)}`;
 
-                        console.log(`[GenericList] Restricted Fetch URL: ${url}`);
-                    } else {
-                        // HR/SuperAdmin: Explicitly request ALL records
-                        url += `&view=all`;
-                        console.log(`[GenericList] Admin Fetch URL (View All): ${url}`);
+                        console.log(`[GenericList] Employee Fetch URL (Own Complaints): ${url}`);
                     }
                 }
 
@@ -267,7 +272,7 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                 {doctype === 'jobopening' && <th className="px-4 py-2">Positions</th>}
                                 {doctype === 'jobopening' && <th className="px-4 py-2">Hired</th>}
                                 {doctype === 'jobopening' && <th className="px-4 py-2">Remaining</th>}
-                                {(doctype === 'announcement' || doctype === 'opsannouncement') && <th className="px-4 py-2">Target Center</th>}
+                                {(doctype === 'announcement' || doctype === 'opsannouncement') && <th className="px-4 py-2">Target Study Center</th>}
                                 {doctype === 'announcement' && <th className="px-4 py-2">Department</th>}
                                 {doctype === 'task' && <th className="px-4 py-2">Assigned To</th>}
                                 {doctype === 'task' && <th className="px-4 py-2">Priority</th>}
@@ -360,7 +365,7 @@ export default function GenericList({ doctype: propDoctype }: GenericListProps) 
                                             )}
                                             {(doctype === 'announcement' || doctype === 'opsannouncement') && (
                                                 <td className="px-4 py-3 text-[#1d2129] font-medium">
-                                                    {item.targetCenter || '-'}
+                                                    {item.targetStudyCenter || '-'}
                                                 </td>
                                             )}
                                             {doctype === 'announcement' && (

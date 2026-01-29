@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Workspace from '../components/Workspace';
-import { Activity, Shield, Users, FileText, BadgeDollarSign, Receipt, School, BookOpen, UserCheck, CalendarDays, Megaphone, GraduationCap, Building2, ClipboardList, ArrowRight, Edit, Clock, ArrowLeftRight, TrendingUp, CheckCircle2, ListTodo, Plus } from 'lucide-react';
+import { Activity, Shield, Users, FileText, BadgeDollarSign, Receipt, School, BookOpen, UserCheck, CalendarDays, Megaphone, GraduationCap, Building2, ClipboardList, ArrowRight, Edit, Clock, ArrowLeftRight, TrendingUp, CheckCircle2, ListTodo, Plus, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DepartmentStaffManager from '../components/DepartmentStaffManager';
 import DepartmentStudentManager from '../components/DepartmentStudentManager';
@@ -19,6 +19,7 @@ export default function DepartmentPanel() {
     const [tasks, setTasks] = useState<any[]>([]);
     const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
     const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
+    const [complaints, setComplaints] = useState<any[]>([]);
     const [employeeSearch, setEmployeeSearch] = useState('');
     const [taskEmployeeFilter, setTaskEmployeeFilter] = useState('All');
     const [showCustomizer, setShowCustomizer] = useState(false);
@@ -35,18 +36,31 @@ export default function DepartmentPanel() {
 
                 // Fetch real counts for this department
                 const query = `?organizationId=${orgId}&departmentId=${id}`;
-                const [resEmp, resAtt, resTask, resLeave] = await Promise.all([
+                const [resEmp, resAtt, resTask, resLeave, resComplaint] = await Promise.all([
                     fetch(`/api/resource/employee${query}`),
                     fetch(`/api/resource/attendance${query}`),
                     fetch(`/api/resource/task${query}`),
-                    fetch(`/api/resource/leaverequest${query}`)
+                    fetch(`/api/resource/leaverequest${query}`),
+                    fetch(`/api/resource/complaint${query}`)
                 ]);
-                const [jsonEmp, jsonAtt, jsonTask, jsonLeave] = await Promise.all([
-                    resEmp.json(), resAtt.json(), resTask.json(), resLeave.json()
+                const [jsonEmp, jsonAtt, jsonTask, jsonLeave, jsonComplaint] = await Promise.all([
+                    resEmp.json(), resAtt.json(), resTask.json(), resLeave.json(), resComplaint.json()
                 ]);
+
+                console.log('--- DEBUG DEPT PANEL COMPLAINTS ---');
+                console.log('Fetch Query:', `/api/resource/complaint${query}`);
+                console.log('Dept ID from Params:', id);
+                console.log('Fetched Raw Data:', jsonComplaint);
+                const complaintsData = jsonComplaint.data || [];
+                console.log('Complaints Count:', complaintsData.length);
+                complaintsData.forEach((c: any, i: number) => {
+                    console.log(`[${i}] Subject: ${c.subject} | DeptID: ${c.departmentId} | OrgID: ${c.organizationId} | FiledBy: ${c.employeeName}/${c.username}`);
+                });
+                console.log('-----------------------------------');
 
                 setEmployees(jsonEmp.data || []);
                 setTasks(jsonTask.data || []);
+                setComplaints(jsonComplaint.data || []);
 
                 // Filter leaves for this department that are pending
                 const leaves = jsonLeave.data || [];
@@ -56,12 +70,14 @@ export default function DepartmentPanel() {
                 setApprovedLeaves(approved);
 
                 const pendingReview = (jsonTask.data || []).filter((t: any) => t.status === 'Pending Review').length;
+                const openComplaints = (jsonComplaint.data || []).filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length;
                 setCounts({
                     employee: jsonEmp.data?.length || 0,
                     attendance: jsonAtt.data?.length || 0,
                     task: (jsonTask.data || []).filter((t: any) => t.status !== 'Completed').length || 0,
                     pendingReview: pendingReview,
-                    leave: pendingLeaves.length
+                    leave: pendingLeaves.length,
+                    complaint: openComplaints
                 });
             } catch (e) {
                 console.error(e);
@@ -172,12 +188,10 @@ export default function DepartmentPanel() {
         shortcuts.push({ label: 'Post Announcement', href: '/announcement/new' });
     }
     if (hasFeature('Employee Complaints')) {
-        // Only HR should manage complaints from the Department Panel
-        const isHR = dept.panelType === 'HR' || /^(Human Resources|HR)$/i.test(dept.name);
-        if (isHR) {
-            masterCards.push({ label: 'Complaints', count: '', icon: Megaphone, href: '/complaint', color: 'bg-red-50 text-red-600' });
-            shortcuts.push({ label: 'Manage Complaints', href: '/complaint' });
-        }
+        // All Department Admins can now manage complaints from their department
+        masterCards.push({ label: 'Complaints', count: '', icon: Megaphone, href: '/complaint', color: 'bg-red-50 text-red-600' });
+        shortcuts.push({ label: 'View Complaints', href: '/complaint' });
+        summaryItems.push({ label: 'Open Complaints', value: loading ? '...' : counts.complaint || 0, color: 'text-red-600', doctype: 'complaint' });
     }
     if (hasFeature('Performance')) {
         masterCards.push({ label: 'Performance', count: '', icon: TrendingUp, href: '/performancereview', color: 'bg-indigo-50 text-indigo-600' });
@@ -609,6 +623,180 @@ export default function DepartmentPanel() {
                                                 </td>
                                             </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* COMPLAINTS Section - Staff Portal */}
+                {hasFeature('Employee Complaints') && (
+                    <div className="space-y-8 mb-8">
+                        <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                                <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center shadow-sm">
+                                        <AlertCircle size={20} />
+                                    </div>
+                                    Employee Complaints
+                                </h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+                                        <span className="text-[11px] font-bold text-gray-500">OPEN</span>
+                                        <span className="text-[14px] font-bold text-red-600">{counts.complaint || 0}</span>
+                                    </div>
+                                    <Link to="/complaint" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
+                                        View All Complaints <ArrowRight size={14} />
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                            <th className="px-4 py-3">Subject</th>
+                                            <th className="px-4 py-3">Filed By</th>
+                                            <th className="px-4 py-3">Date</th>
+                                            <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {complaints.length > 0 ? (
+                                            complaints.slice(0, 10).map((complaint, idx) => (
+                                                <tr key={idx} className="hover:bg-red-50/30 transition-colors group">
+                                                    <td className="px-4 py-3">
+                                                        <div>
+                                                            <p className="text-[13px] font-bold text-gray-700">{complaint.subject}</p>
+                                                            <p className="text-[11px] text-gray-500 line-clamp-1">{complaint.description || 'No description'}</p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 bg-red-100 text-red-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                                {complaint.employeeName?.charAt(0) || 'A'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[13px] font-bold text-gray-700">{complaint.employeeName || 'Anonymous'}</p>
+                                                                <p className="text-[11px] text-gray-500">{complaint.employeeId || '-'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[12px] text-gray-600">
+                                                        {complaint.date ? new Date(complaint.date).toLocaleDateString() : 'N/A'}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${complaint.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                            complaint.status === 'In Progress' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                                complaint.status === 'Dismissed' ? 'bg-gray-50 text-gray-700 border-gray-100' :
+                                                                    'bg-red-50 text-red-700 border-red-100'
+                                                            }`}>
+                                                            {complaint.status || 'Open'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <Link to={`/complaint/${complaint._id}`} className="text-red-600 font-bold text-[11px] hover:underline bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+                                                            Review
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-[13px]">
+                                                    No complaints found in this department.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* COMPLAINTS Section - Staff Portal */}
+                {hasFeature('Employee Complaints') && (
+                    <div className="space-y-8 mb-8">
+                        <div className="bg-white p-6 rounded-2xl border border-[#d1d8dd] shadow-sm overflow-hidden">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                                <h3 className="text-[18px] font-bold text-[#1d2129] flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center shadow-sm">
+                                        <AlertCircle size={20} />
+                                    </div>
+                                    Employee Complaints
+                                </h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+                                        <span className="text-[11px] font-bold text-gray-500">OPEN</span>
+                                        <span className="text-[14px] font-bold text-red-600">{counts.complaint || 0}</span>
+                                    </div>
+                                    <Link to="/complaint" className="text-blue-600 font-bold text-[13px] hover:underline flex items-center gap-1">
+                                        View All Complaints <ArrowRight size={14} />
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 uppercase tracking-tighter text-[11px] font-black text-gray-400 bg-gray-50/50">
+                                            <th className="px-4 py-3">Subject</th>
+                                            <th className="px-4 py-3">Filed By</th>
+                                            <th className="px-4 py-3">Date</th>
+                                            <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {complaints.length > 0 ? (
+                                            complaints.slice(0, 10).map((complaint, idx) => (
+                                                <tr key={idx} className="hover:bg-red-50/30 transition-colors group">
+                                                    <td className="px-4 py-3">
+                                                        <div>
+                                                            <p className="text-[13px] font-bold text-gray-700">{complaint.subject}</p>
+                                                            <p className="text-[11px] text-gray-500 line-clamp-1">{complaint.description || 'No description'}</p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 bg-red-100 text-red-600 rounded-lg flex items-center justify-center font-bold text-[10px]">
+                                                                {complaint.employeeName?.charAt(0) || 'A'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[13px] font-bold text-gray-700">{complaint.employeeName || 'Anonymous'}</p>
+                                                                <p className="text-[11px] text-gray-500">{complaint.employeeId || '-'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-[12px] text-gray-600">
+                                                        {complaint.date ? new Date(complaint.date).toLocaleDateString() : 'N/A'}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${complaint.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                            complaint.status === 'In Progress' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                                complaint.status === 'Dismissed' ? 'bg-gray-50 text-gray-700 border-gray-100' :
+                                                                    'bg-red-50 text-red-700 border-red-100'
+                                                            }`}>
+                                                            {complaint.status || 'Open'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <Link to={`/complaint/${complaint._id}`} className="text-red-600 font-bold text-[11px] hover:underline bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+                                                            Review
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-[13px]">
+                                                    No complaints found in this department.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

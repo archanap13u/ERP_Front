@@ -81,9 +81,9 @@ export default function AnnouncementPopup() {
                 const popups = data.filter((ann: any) => {
                     if (ann.targetDepartment === 'None') return false;
 
-                    const target = (ann.targetCenter || ann.targetStudyCenter || '').toString().trim().toLowerCase();
+                    const target = (ann.targetStudyCenter || ann.targetCenter || '').toString().trim().toLowerCase();
 
-                    if (userRole === 'StudyCenter' && (target === 'none' || !target)) return false;
+                    if (target === 'none' || !target || target === 'null') return false;
 
                     const now = new Date();
                     const startDate = ann.startDate ? new Date(ann.startDate) : null;

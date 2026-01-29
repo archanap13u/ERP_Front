@@ -57,7 +57,7 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                         });
 
                         // For Announcements, verify distinct 'All' and 'None' options
-                        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetCenter')) {
+                        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetStudyCenter')) {
                             options[field.name].unshift({ label: 'None', value: 'None' });
                             options[field.name].unshift({ label: 'All', value: 'All' });
                         }
@@ -534,8 +534,8 @@ export default function GenericEdit({ doctype: propDoctype }: GenericEditProps) 
                     <div className="text-right">
                         <p className="text-[11px] text-gray-500 uppercase font-bold">Priority</p>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${formData.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-100' :
-                                formData.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                    'bg-blue-50 text-blue-700 border-blue-100'
+                            formData.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                'bg-blue-50 text-blue-700 border-blue-100'
                             }`}>
                             {formData.priority || 'Medium'}
                         </span>

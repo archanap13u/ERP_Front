@@ -46,6 +46,14 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
 
         setFormData((prev: any) => {
             const updated = { ...prev };
+
+            // Initialize with defaults from fields config
+            fields.forEach(f => {
+                if (f.default !== undefined && updated[f.name] === undefined) {
+                    updated[f.name] = f.default;
+                }
+            });
+
             if (orgId) updated.organizationId = orgId;
 
             const isDepartmental = ['complaint', 'performancereview', 'attendance', 'studycenter', 'announcement', 'opsannouncement', 'program', 'university', 'jobopening', 'internalmark', 'task', 'leaverequest'].includes(doctype || '');
@@ -65,16 +73,26 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
             }
 
             if (doctype === 'complaint' || doctype === 'leaverequest') {
-                const storedEmpId = localStorage.getItem('employee_id');
-                const storedUserId = localStorage.getItem('user_id');
-                const storedEmpName = localStorage.getItem('user_name');
+                const rawEmpId = localStorage.getItem('employee_id');
+                const storedEmpId = (rawEmpId === 'undefined' || rawEmpId === 'null') ? '' : rawEmpId;
+
+                const rawUserId = localStorage.getItem('user_id');
+                const storedUserId = (rawUserId === 'undefined' || rawUserId === 'null') ? '' : rawUserId;
+
+                const rawEmpName = localStorage.getItem('user_name');
+                const storedEmpName = (rawEmpName === 'undefined' || rawEmpName === 'null') ? '' : rawEmpName;
+
                 const storedRole = localStorage.getItem('user_role');
 
                 if (storedEmpId) updated.employeeId = storedEmpId;
                 else if (storedUserId) updated.employeeId = storedUserId;
 
-                if (storedEmpName) updated.employeeName = storedEmpName;
-                else if (storedRole) updated.employeeName = storedRole;
+                if (storedEmpName) {
+                    updated.employeeName = storedEmpName;
+                    updated.username = storedEmpName;
+                } else if (storedRole) {
+                    updated.employeeName = storedRole;
+                }
             }
 
             // Merge URL Query Parameters
@@ -177,11 +195,11 @@ export default function GenericNew({ doctype: propDoctype }: GenericNewProps) {
                             }
                         }
 
-                        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetDepartment' || field.name === 'targetCenter')) {
-                            options[field.name].unshift({ label: 'None', value: 'None' });
-                            if (field.name === 'department' || field.name === 'targetDepartment') {
+                        if ((doctype === 'announcement' || doctype === 'opsannouncement') && (field.name === 'department' || field.name === 'targetDepartment' || field.name === 'targetCenter' || field.name === 'targetStudyCenter')) {
+                            if (field.name === 'department' || field.name === 'targetDepartment' || field.name === 'targetStudyCenter') {
                                 options[field.name].unshift({ label: 'All', value: 'All' });
                             }
+                            options[field.name].unshift({ label: 'None', value: 'None' });
                         }
                     } catch (e) {
                         console.error(`Error fetching options for ${field.name}`, e);

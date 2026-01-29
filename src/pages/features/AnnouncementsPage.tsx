@@ -52,7 +52,7 @@ export default function AnnouncementsPage({ doctype: propDoctype }: Announcement
         }
 
         if (userRole === 'StudyCenter') {
-            const target = (ann.targetCenter || '').toString().trim().toLowerCase();
+            const target = (ann.targetStudyCenter || ann.targetCenter || '').toString().trim().toLowerCase();
             const currentCenter = (userCenterName || '').toString().trim().toLowerCase();
             const currentId = (userCenterId || '').toString().toLowerCase();
 
@@ -114,7 +114,7 @@ export default function AnnouncementsPage({ doctype: propDoctype }: Announcement
 
                 if (userRole === 'StudyCenter' || doctype === 'opsannouncement') {
                     // Centers only see Ops announcements by default, or if explicitly requested as opsannouncement
-                    const res = await fetch(`/api/resource/opsannouncement?organizationId=${orgId || ''}`);
+                    const res = await fetch(`/api/resource/opsannouncement?organizationId=${orgId || ''}&studyCenter=${encodeURIComponent(userCenterName || '')}`);
                     const json = await res.json();
                     console.log(`[Diagnostic] Fetched ${json.data?.length || 0} Ops Announcements`);
                     setAnnouncements(json.data || []);
@@ -231,7 +231,7 @@ export default function AnnouncementsPage({ doctype: propDoctype }: Announcement
 
                             <div className="flex items-center gap-4 text-[11px] text-gray-500">
                                 <span className="flex items-center gap-1 font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                                    <Building2 size={12} /> {announcement.targetCenter || 'All Centers'}
+                                    <Building2 size={12} /> {announcement.targetStudyCenter || announcement.targetCenter || 'All Centers'}
                                 </span>
                             </div>
                         </div>
