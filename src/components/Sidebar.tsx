@@ -106,6 +106,7 @@ export default function Sidebar() {
                         (role === 'Finance' || panelType === 'Finance') ? '/finance' :
                             (panelType === 'Sales') ? '/sales-dashboard' :
                                 '/employee-dashboard',
+            labelOverride: panelType === 'Sales' ? 'Staff Portal' : undefined,
             roles: ['Employee', 'DepartmentAdmin', 'HR', 'Operations', 'Finance', 'Inventory', 'CRM', 'Projects', 'Support', 'Assets']
         },
         { icon: UserCheck, label: 'Staff Portal', href: '/employee-dashboard', roles: ['HR', 'Operations', 'Finance', 'DepartmentAdmin'], feature: 'Staff Portal' },
@@ -123,12 +124,8 @@ export default function Sidebar() {
 
         // HR & Employee Management
         { icon: Users, label: 'HR Workspace', href: '/hr', roles: ['HR'], feature: 'HR Dashboard' },
-        { icon: ClipboardList, label: 'Employee List', href: '/employee', roles: ['HR', 'DepartmentAdmin'], feature: 'Employee List' },
-        { icon: UserCheck, label: 'Add Employee', href: '/employee/new', roles: ['HR'], feature: 'Add Employee' },
-        { icon: Building2, label: 'Post Vacancy', href: '/jobopening', roles: ['HR'], feature: 'Post Vacancy' },
-        { icon: ArrowLeftRight, label: 'Employee Transfer', href: '/employee-transfer', roles: ['HR'], feature: 'Employee Transfer' },
-        { icon: Users, label: 'Employee Lifecycle', href: '/employee-lifecycle', roles: ['HR'], feature: 'Employee Lifecycle' },
-
+        { icon: Building2, label: 'Leads', href: '/studycenter', roles: ['Operations', 'DepartmentAdmin'], feature: 'Study Center' },
+        { icon: ClipboardList, label: 'Staff List', href: '/employee', roles: ['HR', 'DepartmentAdmin'], feature: 'Employee List' },
         { icon: GraduationCap, label: 'STUDENTS', href: (role === 'Finance' || panelType === 'Finance' || role?.includes('Admin')) ? '/finance-students' : '/student', roles: ['HR', 'Operations', 'StudyCenter', 'Finance', 'SuperAdmin'], feature: 'STUDENTS' },
         { icon: Megaphone, label: 'Complaints', href: '/complaint', roles: ['HR'], feature: 'Employee Complaints' },
         { icon: School, label: 'Holidays', href: '/holiday', roles: ['HR', 'Operations'], feature: 'Holidays' },
@@ -146,14 +143,6 @@ export default function Sidebar() {
 
         // Operations
         { icon: School, label: 'Universities', href: '/university', roles: ['Operations'], feature: 'University' },
-        { icon: Building2, label: 'Study Centers', href: '/studycenter', roles: ['Operations', 'DepartmentAdmin'], feature: 'Study Center' },
-        { icon: GraduationCap, label: 'Programs', href: '/program', roles: ['Operations'], feature: 'Programs' },
-        { icon: ClipboardList, label: 'APPLICATIONS', href: '/student', roles: ['Operations'], feature: 'APPLICATIONS' },
-        { icon: UserCheck, label: 'Add Staff Member', href: '/employee/new', roles: ['DepartmentAdmin'], feature: 'Employee List', panelType: 'Sales' },
-        { icon: UserPlus, label: 'New Admission', href: '/student/new', roles: ['DepartmentAdmin'], feature: 'STUDENTS', panelType: 'Sales' },
-        { icon: BadgeDollarSign, label: 'Record Payment', href: '/paymententry/new', roles: ['DepartmentAdmin'], feature: 'Payments', panelType: 'Sales' },
-        { icon: Plus, label: 'Add New Lead', href: '/studycenter/new', roles: ['DepartmentAdmin'], feature: 'Study Center', panelType: 'Sales' },
-
         { icon: UserCheck, label: 'Internal Marks', href: '/internalmark', roles: ['Operations', 'StudyCenter'], feature: 'Internal Marks' },
 
         // CRM & Sales
@@ -216,7 +205,7 @@ export default function Sidebar() {
                                     className={`flex items-center gap-3 px-3 py-2 rounded text-[#1d2129] hover:bg-[#ebedef] transition-colors no-underline ${isActive ? 'bg-white shadow-sm font-bold border-l-2 border-blue-600 pl-[10px]' : 'bg-transparent'}`}
                                 >
                                     <item.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
-                                    <span className="text-[13px]">{item.label}</span>
+                                    <span className="text-[13px]">{(item as any).labelOverride || item.label}</span>
                                 </Link>
                             );
                         })}
@@ -252,44 +241,20 @@ export default function Sidebar() {
         // 2. Strict Feature Check for Department Admin/Customized Panels
         // EXCEPTION: Standard Employees should NOT inherit their department's admin features
         if ((role === 'DepartmentAdmin' || (deptFeatures && deptFeatures.length > 0)) && role !== 'Employee') {
-            // Always show basic navigation items
-            // EXCEPTION: For Sales (Staff Portal), we only want Dashboard and the Staff Portal itself.
-            const alwaysShowForDeptAdmin = panelType === 'Sales' ? [] : ['Task Management', 'Tasks', 'Leave Requests', 'Notifications'];
-
-            if (!item.feature || (role === 'DepartmentAdmin' && alwaysShowForDeptAdmin.includes(item.label || ''))) {
-                // If it's a Dashboard link, we always show it
-                if (item.label === 'Dashboard' || item.label === 'Staff Portal') return roleAllowed;
-
-                // For Sales, if it's not Dashboard/Staff Portal and has no feature, hide it (like Notifications)
-                if (panelType === 'Sales' && !item.feature) return false;
-
-                return roleAllowed;
+            // --- STRICT SALES OVERRIDE ---
+            if (panelType === 'Sales') {
+                const salesWhitelist = ['Dashboard', 'Staff Portal', 'Leads', 'Staff List'];
+                return salesWhitelist.includes(item.label || '') && roleAllowed;
             }
 
-            // --- SALES PANEL TYPE SPECIFIC OVERRIDE ---
-            // If it's a Sales shortcut (marked by panelType: 'Sales'), allow it if Staff Portal is active
-            if (panelType === 'Sales' && (item as any).panelType === 'Sales' && deptFeatures.includes('Staff Portal')) {
-                return true;
-            }
+            // Standard Dept Admin behavior
+            const alwaysShowForDeptAdmin = ['Task Management', 'Tasks', 'Leave Requests', 'Notifications'];
 
-            // --- STAFF PORTAL COMPOUND FEATURE ---
-            // If the "Staff Portal" feature is assigned, it enables a bundle of tools
-            if (deptFeatures.includes('Staff Portal')) {
-                const staffPortalBundle = [
-                    'Announcements',
-                    'Employee List',
-                    'Tasks',
-                    'Attendance',
-                    'Holidays',
-                    'Employee Complaints',
-                    'STUDENTS',
-                    'Study Center',
-                    'Payments'
-                ];
-                if (item.feature && staffPortalBundle.includes(item.feature)) {
-                    return true;
-                }
-            }
+            // If it's a Dashboard link, we always show it
+            if (item.label === 'Dashboard' || item.label === 'Staff Portal') return roleAllowed;
+
+            // For Sales, if it's not Dashboard/Staff Portal and has no feature, hide it (like Notifications)
+            if (panelType === 'Sales' && !item.feature) return false;
 
             // For other items, strictly check if the feature is in the selected list
             return deptFeatures.includes(item.feature);
