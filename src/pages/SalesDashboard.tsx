@@ -107,6 +107,14 @@ export default function SalesDashboard() {
         fetchData();
     }, [orgId, deptId]);
 
+    const hasFeature = (feat: string) => {
+        if (features.includes('Staff Portal')) {
+            const bundle = ['Announcements', 'Employee List', 'Tasks', 'Attendance', 'Holidays', 'Employee Complaints', 'Leave Requests'];
+            if (bundle.includes(feat)) return true;
+        }
+        return features.includes(feat);
+    };
+
     const handleSaveFeatures = async (newFeatures: string[]) => {
         try {
             const res = await fetch(`/api/resource/department/${deptId}?organizationId=${orgId}`, {
@@ -126,33 +134,38 @@ export default function SalesDashboard() {
         }
     };
 
+    const summaryItems = [
+        { label: 'Total Staff', value: loading ? '...' : counts.employee || 0, color: 'text-blue-600', doctype: 'employee', feature: 'Employee List' },
+        { label: 'Present Today', value: loading ? '...' : counts.present || 0, color: 'text-emerald-600', doctype: 'attendance', feature: 'Attendance' },
+        { label: 'Open Tasks', value: loading ? '...' : counts.task || 0, color: 'text-orange-600', doctype: 'task', feature: 'Tasks' },
+        { label: 'Pending Leaves', value: loading ? '...' : counts.leave || 0, color: 'text-purple-600', doctype: 'leave-request', feature: 'Leave Requests' },
+    ].filter(i => hasFeature(i.feature));
+
+    const masterCards = [
+        { label: 'Staff List', icon: Users, count: counts.employee?.toString(), href: `/employee?departmentId=${contextData.id || ''}`, color: 'bg-blue-50 text-blue-600', feature: 'Employee List' },
+        { label: 'Attendance', icon: Clock, count: counts.present?.toString(), href: `/attendance?departmentId=${contextData.id || ''}`, color: 'bg-emerald-50 text-emerald-600', feature: 'Attendance' },
+        { label: 'Dept Tasks', icon: ClipboardList, count: counts.task?.toString(), href: `/task?departmentId=${contextData.id || ''}`, color: 'bg-orange-50 text-orange-600', feature: 'Tasks' },
+        { label: 'Leave Requests', icon: Calendar, count: counts.leave?.toString(), href: `/leave-request?departmentId=${contextData.id || ''}`, color: 'bg-purple-50 text-purple-600', feature: 'Leave Requests' },
+        { label: 'Complaints', icon: MessageSquare, count: counts.complaint?.toString(), href: `/complaint?departmentId=${contextData.id || ''}`, color: 'bg-red-50 text-red-600', feature: 'Employee Complaints' },
+    ].filter(c => hasFeature(c.feature));
+
+    const shortcuts = [
+        { label: 'Mark Attendance', href: '/attendance/new', feature: 'Attendance' },
+        { label: 'Assign Task', href: '/task/new', feature: 'Tasks' },
+        { label: 'Post Announcement', href: '/announcement/new', feature: 'Announcements' },
+        { label: 'Staff Directory', href: `/employee?departmentId=${contextData.id || ''}`, feature: 'Employee List' },
+    ].filter(s => hasFeature(s.feature));
+
     return (
         <div className="space-y-8 pb-20">
             <Workspace
-                title="Staff Portal"
+                title="SALES WORKSPACE Staff Portal"
                 newHref="/employee/new"
                 newLabel="Add Staff"
                 onCustomize={() => setIsCustomizing(true)}
-                summaryItems={[
-                    { label: 'Total Staff', value: loading ? '...' : counts.employee || 0, color: 'text-blue-600', doctype: 'employee' },
-                    { label: 'Present Today', value: loading ? '...' : counts.present || 0, color: 'text-emerald-600', doctype: 'attendance' },
-                    { label: 'Open Tasks', value: loading ? '...' : counts.task || 0, color: 'text-orange-600', doctype: 'task' },
-                    { label: 'Pending Leaves', value: loading ? '...' : counts.leave || 0, color: 'text-purple-600', doctype: 'leave-request' },
-                ]}
-                masterCards={[
-                    { label: 'Staff List', icon: Users, count: counts.employee?.toString(), href: `/employee?departmentId=${contextData.id || ''}`, color: 'bg-blue-50 text-blue-600' },
-                    { label: 'Attendance', icon: Clock, count: counts.present?.toString(), href: `/attendance?departmentId=${contextData.id || ''}`, color: 'bg-emerald-50 text-emerald-600' },
-                    { label: 'Dept Tasks', icon: ClipboardList, count: counts.task?.toString(), href: `/task?departmentId=${contextData.id || ''}`, color: 'bg-orange-50 text-orange-600' },
-                    { label: 'Leave Requests', icon: Calendar, count: counts.leave?.toString(), href: `/leave-request?departmentId=${contextData.id || ''}`, color: 'bg-purple-50 text-purple-600' },
-                    { label: 'Complaints', icon: MessageSquare, count: counts.complaint?.toString(), href: `/complaint?departmentId=${contextData.id || ''}`, color: 'bg-red-50 text-red-600' },
-                ]}
-                shortcuts={[
-                    { label: 'Mark Attendance', href: '/attendance/new' },
-                    { label: 'Assign Task', href: '/task/new' },
-                    { label: 'Post Announcement', href: '/announcement/new' },
-                    { label: 'Department Analytics', href: '#' },
-                    { label: 'Staff Directory', href: `/employee?departmentId=${contextData.id || ''}` },
-                ]}
+                summaryItems={summaryItems}
+                masterCards={masterCards}
+                shortcuts={shortcuts}
             />
 
             <CustomizationModal

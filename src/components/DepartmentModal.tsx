@@ -19,7 +19,7 @@ const ALL_FEATURES = [
     'Leads', 'Deals', 'Customers', 'Touchpoints',
     'Projects', 'Tasks', 'Timesheets', 'Agile Board',
     'Tickets', 'Issues', 'Warranty Claims', 'Knowledge Base',
-    'Asset Tracking', 'Maintenance', 'Depreciation'
+    'Asset Tracking', 'Maintenance', 'Depreciation', 'Staff Portal'
 ];
 
 const MODULES = [
@@ -93,8 +93,8 @@ const MODULES = [
     },
     {
         id: 'Sales',
-        name: 'Staff Portal',
-        features: ['Announcements', 'Employee List', 'Tasks', 'Attendance', 'Holidays', 'Employee Complaints'],
+        name: 'SALES WORKSPACE',
+        features: ['Staff Portal'],
         color: 'text-red-600',
         bg: 'bg-red-50',
         border: 'border-red-100'
@@ -386,7 +386,10 @@ export default function DepartmentModal({ isOpen, onClose, onSave, initialData, 
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                            {ALL_FEATURES.map(feat => {
+                            {ALL_FEATURES.filter(feat => {
+                                if (formData.panelType === 'Sales') return feat === 'Staff Portal';
+                                return true;
+                            }).map(feat => {
                                 const isActive = formData.features.includes(feat);
                                 return (
                                     <button
